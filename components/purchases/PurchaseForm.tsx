@@ -269,14 +269,18 @@ export default function PurchaseForm({ supplier, onSubmit }: PurchaseFormProps) 
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>{formatVatAmount(items.reduce((sum, item) => sum + (item.quantity * item.price), 0))}</span>
+                    <span>{formatVatAmount(items.reduce((sum, item) => {
+                      const itemTotal = item.quantity * item.price;
+                      const { basePrice } = calculateVat(itemTotal, supplierVatPreference);
+                      return sum + basePrice;
+                    }, 0))}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>VAT Amount:</span>
                     <span>{formatVatAmount(items.reduce((sum, item) => {
-                      const subtotal = item.quantity * item.price;
-                      const { vatAmount } = getVatBreakdown(subtotal, supplierVatPreference);
-                      return sum + parseFloat(vatAmount.replace(/[^0-9.-]+/g, ''));
+                      const itemTotal = item.quantity * item.price;
+                      const { vatAmount } = calculateVat(itemTotal, supplierVatPreference);
+                      return sum + vatAmount;
                     }, 0))}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold text-gray-900 border-t pt-2">
