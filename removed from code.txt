@@ -1,0 +1,27 @@
+<div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Sales</h2>
+        <Link
+          href="/sales/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          New Sale
+        </Link>
+      </div>
+
+<div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Purchases</h2>
+        <Link
+          href="/purchases/new"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          New Purchase
+        </Link>
+      </div>
+{sale.isAccredited && sale.invoiceNumber && (
+                    <Link
+                      href={`/sales/${sale.id}/invoice`}
+                      className="text-green-600 hover:text-green-900"
+                    >
+                      Invoice
+                    </Link>
+                  )}
