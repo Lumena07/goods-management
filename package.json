@@ -72,5 +72,8 @@
     "setupFilesAfterEnv": [
       "<rootDir>/__tests__/setup/testSetup.ts"
     ]
-  }
+  },
+  "engines": {
+   "node": "20.18.1"
+}
 }
