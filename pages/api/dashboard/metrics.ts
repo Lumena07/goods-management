@@ -38,7 +38,7 @@ export default async function handler(
     const metrics = {
       totalSales: totalSales._sum.total || 0,
       totalPurchases: totalPurchases._sum.total || 0,
-      outstandingBalance: (totalPurchases._sum.total || 0) - (totalSales._sum.total || 0)
+      outstandingBalance: (totalSales._sum.total || 0) - (totalPurchases._sum.total || 0)
     }
 
     return res.status(200).json(metrics)

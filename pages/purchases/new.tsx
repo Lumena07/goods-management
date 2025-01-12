@@ -7,11 +7,26 @@ export default function NewPurchasePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
+  const handleSubmit = async (data: any) => {
+    try {
+      const response = await fetch('/api/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        router.push('/purchases')
+      }
+    } catch (error) {
+      console.error('Error creating purchase:', error)
+    }
+  }
+
   if (status === 'loading') {
     return <div>Loading...</div>
   }
 
-  if (!session || !['ADMIN', 'INVENTORY_MANAGER'].includes(session.user.role)) {
+  if (!session || !['ADMIN'].includes(session.user.role)) {
     router.push('/unauthorized')
     return null
   }
@@ -25,7 +40,7 @@ export default function NewPurchasePage() {
           </div>
         </div>
         <div className="mt-8">
-          <PurchaseForm />
+          <PurchaseForm onSubmit={handleSubmit} />
         </div>
       </div>
     </DashboardLayout>

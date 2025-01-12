@@ -6,6 +6,18 @@ import PaymentForm from './PaymentForm'
 import PaymentList from './PaymentList'
 import { PaymentMethod } from '@prisma/client'
 
+interface Product {
+  name: string
+  currentStock: number
+}
+
+interface Customer {
+  name: string
+  address?: string
+  phone?: string
+  isAccredited: boolean
+}
+
 interface Payment {
   id: string
   amount: number
@@ -21,33 +33,25 @@ interface SaleItem {
   quantity: number
   price: number
   discount: number
-  product: {
-    name: string
-    currentStock: number
-  }
+  product: Product
+  basePrice: number
+  vatAmount: number
 }
 
 interface Sale {
   id: string
-  customer?: {
-    name: string
-    address?: string
-    phone?: string
-    isAccredited: boolean
-  }
+  customer: Customer
+  items: SaleItem[]
+  payments: Payment[]
   total: number
+  basePrice: number
+  vatAmount: number
+  createdAt: string
+  updatedAt: string
   isPaid: boolean
   isAccredited: boolean
   invoiceNumber?: string
   dueDate?: string
-  items: SaleItem[]
-  createdAt: string
-  payments: Array<{
-    id: string
-    amount: number
-    method: string
-    createdAt: string
-  }>
 }
 
 interface SaleDetailProps {
@@ -179,38 +183,48 @@ export default function SaleDetail({ sale }: SaleDetailProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {sale.items.map((item) => {
-                const subtotal = item.quantity * item.price
-                const discountAmount = (subtotal * item.discount) / 100
-                const total = subtotal - discountAmount
-
-                return (
-                  <tr key={item.id}>
-                    <td className="px-3 py-4 text-sm text-gray-900">
-                      {item.product.name}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 text-right">
-                      {item.quantity}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 text-right">
-                      TZS {item.price.toLocaleString()}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 text-right">
-                      {item.discount > 0 ? `${item.discount}%` : '-'}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-gray-900 text-right">
-                      TZS {total.toLocaleString()}
-                    </td>
-                  </tr>
-                )
-              })}
+              {sale.items.map((item) => (
+                <tr key={item.id}>
+                  <td className="px-3 py-4 text-sm text-gray-900">
+                    {item.product.name}
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-900 text-right">
+                    {item.quantity}
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-900 text-right">
+                    TZS {item.price.toLocaleString()}
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-900 text-right">
+                    {item.discount > 0 ? `${item.discount}%` : '-'}
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-900 text-right">
+                    TZS {(item.basePrice + item.vatAmount).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
             </tbody>
             <tfoot>
               <tr>
                 <td colSpan={4} className="px-3 py-4 text-sm font-medium text-gray-900 text-right">
-                  Total:
+                  Subtotal:
                 </td>
                 <td className="px-3 py-4 text-sm font-medium text-gray-900 text-right">
+                  TZS {sale.basePrice.toLocaleString()}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan={4} className="px-3 py-4 text-sm font-medium text-gray-900 text-right">
+                  VAT Amount:
+                </td>
+                <td className="px-3 py-4 text-sm font-medium text-gray-900 text-right">
+                  TZS {sale.vatAmount.toLocaleString()}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan={4} className="px-3 py-4 text-sm font-bold text-gray-900 text-right">
+                  Final Total:
+                </td>
+                <td className="px-3 py-4 text-sm font-bold text-gray-900 text-right">
                   TZS {sale.total.toLocaleString()}
                 </td>
               </tr>

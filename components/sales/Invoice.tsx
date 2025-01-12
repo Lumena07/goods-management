@@ -18,6 +18,8 @@ interface InvoiceProps {
       discount: number
     }[]
     total: number
+    basePrice: number
+    vatAmount: number
   }
   companyInfo: {
     name: string
@@ -114,6 +116,18 @@ export default function Invoice({ sale, companyInfo }: InvoiceProps) {
             })}
           </tbody>
           <tfoot>
+            <tr>
+              <td colSpan={4} className="text-right py-2">Subtotal:</td>
+              <td className="text-right py-2">
+                TZS {sale.basePrice.toLocaleString()}
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={4} className="text-right py-2">VAT Amount:</td>
+              <td className="text-right py-2">
+                TZS {sale.vatAmount.toLocaleString()}
+              </td>
+            </tr>
             <tr className="font-bold">
               <td colSpan={4} className="text-right py-4">Total:</td>
               <td className="text-right py-4">

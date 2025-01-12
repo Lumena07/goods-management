@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { ShoppingCart, CreditCard, Store } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useRouter } from 'next/router'
 
 interface Activity {
   id: string
@@ -12,6 +14,7 @@ interface Activity {
 }
 
 export default function RecentActivitiesWidget() {
+  const router = useRouter()
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -19,7 +22,7 @@ export default function RecentActivitiesWidget() {
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        const response = await fetch('/api/activities/recent')
+        const response = await fetch('/api/activities/recent?limit=5')
         if (!response.ok) {
           throw new Error('Failed to fetch activities')
         }
@@ -112,6 +115,15 @@ export default function RecentActivitiesWidget() {
           </div>
         )}
       </CardContent>
+      <CardFooter>
+        <Button 
+          variant="outline" 
+          className="w-full"
+          onClick={() => router.push('/activities')}
+        >
+          View All Activities
+        </Button>
+      </CardFooter>
     </Card>
   )
 } 

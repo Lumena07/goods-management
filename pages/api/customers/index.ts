@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { VatPreference } from '@prisma/client'
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,6 +27,7 @@ export default async function handler(
             phone: true,
             isAccredited: true,
             creditLimit: true,
+            vatPreference: true,
             _count: {
               select: {
                 sales: true
@@ -50,7 +52,8 @@ export default async function handler(
             phone,
             address: req.body.address,
             isAccredited: isAccredited || false,
-            creditLimit: creditLimit || 0
+            creditLimit: creditLimit || 0,
+            vatPreference: req.body.vatPreference || 'VAT_INCLUSIVE'
           }
         })
         return res.status(201).json(customer)

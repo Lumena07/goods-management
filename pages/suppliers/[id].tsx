@@ -34,6 +34,25 @@ export default function SupplierDetailPage() {
     }
   }, [id])
 
+  const handleTogglePayment = async (purchaseId: string, currentStatus: boolean) => {
+    try {
+      const response = await fetch(`/api/purchases/${purchaseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isPaid: !currentStatus })
+      })
+
+      if (response.ok) {
+        // Refresh supplier data to show updated status
+        fetchSupplier()
+      }
+    } catch (error) {
+      console.error('Error updating payment status:', error)
+    }
+  }
+
   const fetchSupplier = async () => {
     try {
       const response = await fetch(`/api/suppliers/${id}`)
@@ -156,11 +175,15 @@ export default function SupplierDetailPage() {
                           TZS {purchase.total.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            purchase.isPaid
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span 
+                            onClick={() => session?.user.role === 'ADMIN' && handleTogglePayment(purchase.id, purchase.isPaid)}
+                            className={`px-3 py-1 inline-flex items-center text-sm font-medium rounded-md ${
+                              purchase.isPaid
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : 'bg-red-50 text-red-700 border border-red-200'
+                            } ${session?.user.role === 'ADMIN' ? 'cursor-pointer hover:bg-opacity-75 transition-colors duration-150' : ''}`}
+                          >
+                            <span className={`w-2 h-2 rounded-full mr-2 ${purchase.isPaid ? 'bg-green-400' : 'bg-red-400'}`}></span>
                             {purchase.isPaid ? 'Paid' : 'Unpaid'}
                           </span>
                         </td>

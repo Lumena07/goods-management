@@ -16,6 +16,21 @@ export default function NewSalePage() {
     return null
   }
 
+  const handleSubmit = async (data: any) => {
+    try {
+      const response = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        router.push('/sales')
+      }
+    } catch (error) {
+      console.error('Error creating sale:', error)
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -25,7 +40,7 @@ export default function NewSalePage() {
           </div>
         </div>
         <div className="mt-8">
-          <SaleForm />
+          <SaleForm onSubmit={handleSubmit} />
         </div>
       </div>
     </DashboardLayout>

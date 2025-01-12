@@ -73,9 +73,10 @@ export default function SaleList() {
   if (loading) return <div>Loading...</div>
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Sales</h2>
+          
+       <div className="space-y-4">
+       <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Sales</h1>
         <Link
           href="/sales/new"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -83,7 +84,7 @@ export default function SaleList() {
           New Sale
         </Link>
       </div>
-            <div className="bg-white shadow overflow-hidden rounded-lg">
+      <div className="bg-white shadow overflow-hidden rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

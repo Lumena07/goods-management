@@ -31,6 +31,7 @@ export default async function handler(
     const sales = await prisma.sale.findMany({
       where: {
         customerId: String(id),
+        isAccredited: true,
         createdAt: {
           gte: startDate,
           lte: endDate

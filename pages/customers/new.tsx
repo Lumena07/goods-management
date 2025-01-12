@@ -7,6 +7,21 @@ export default function NewCustomerPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
+  const handleSubmit = async (data: any) => {
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        router.push('/customers')
+      }
+    } catch (error) {
+      console.error('Error creating customer:', error)
+    }
+  }
+
   if (status === 'loading') {
     return <div>Loading...</div>
   }
@@ -20,7 +35,7 @@ export default function NewCustomerPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="mt-8">
-          <CustomerForm />
+          <CustomerForm onSubmit={handleSubmit} />
         </div>
       </div>
     </DashboardLayout>

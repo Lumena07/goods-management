@@ -3,6 +3,8 @@ import { useRouter } from 'next/router'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { VatPreference } from '@/lib/utils/vat'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 interface SupplierFormProps {
   supplier?: {
@@ -10,47 +12,31 @@ interface SupplierFormProps {
     name: string
     email: string | null
     phone: string
-    address: string
+    address: string | null
+    vatPreference: VatPreference
   }
+  onSubmit: (data: any) => void
 }
 
-export default function SupplierForm({ supplier }: SupplierFormProps) {
+export default function SupplierForm({ supplier, onSubmit }: SupplierFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     name: supplier?.name || '',
     email: supplier?.email || '',
     phone: supplier?.phone || '',
-    address: supplier?.address || ''
+    address: supplier?.address || '',
+    vatPreference: supplier?.vatPreference || 'VAT_INCLUSIVE'
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const url = supplier 
-      ? `/api/suppliers/${supplier.id}`
-      : '/api/suppliers'
-    
-    const method = supplier ? 'PUT' : 'POST'
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
-
-      if (response.ok) {
-        router.push('/suppliers')
-      }
-    } catch (error) {
-      console.error('Error saving supplier:', error)
-    }
+  const handleChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="pt-8 space-y-8" data-testid="supplier-form">
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      onSubmit(formData)
+    }} className="pt-8 space-y-8" data-testid="supplier-form">
       <div>
         <h2 className="text-2xl font-bold">
           {supplier ? 'Edit' : 'New'} Supplier
@@ -103,6 +89,22 @@ export default function SupplierForm({ supplier }: SupplierFormProps) {
             className="mt-1"
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="vatPreference">VAT Preference</Label>
+        <Select
+          value={formData.vatPreference}
+          onValueChange={(value) => handleChange('vatPreference', value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select VAT preference" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="VAT_INCLUSIVE">VAT Inclusive</SelectItem>
+            <SelectItem value="VAT_EXCLUSIVE">VAT Exclusive</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex justify-end space-x-4 pt-6">

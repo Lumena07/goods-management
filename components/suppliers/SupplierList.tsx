@@ -9,6 +9,7 @@ interface Supplier {
   email: string | null
   phone: string
   address: string
+  vatPreference: 'VAT_INCLUSIVE' | 'VAT_EXCLUSIVE'
   prices: {
     id: string
     price: number
@@ -84,9 +85,12 @@ export default function SupplierList() {
                 Contact
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                VAT
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Products
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="w-48 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -100,6 +104,15 @@ export default function SupplierList() {
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <div>{supplier.email}</div>
                   <div>{supplier.phone}</div>
+                </td>
+                <td className="px-6 py-4 text-sm">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    supplier.vatPreference === 'VAT_INCLUSIVE' 
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {supplier.vatPreference === 'VAT_INCLUSIVE' ? 'Inclusive' : 'Exclusive'}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <ul className="list-disc list-inside">

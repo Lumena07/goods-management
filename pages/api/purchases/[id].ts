@@ -45,23 +45,15 @@ export default async function handler(
       }
 
       try {
-        const { status, receivedItems } = req.body
+        const { status, receivedItems, isPaid } = req.body
 
-        // Start a transaction
-        const result = await prisma.$transaction(async (tx) => {
-          const purchase = await tx.purchase.update({
+        // If updating payment status
+        if (typeof isPaid === 'boolean') {
+          const purchase = await prisma.purchase.update({
             where: { id: String(id) },
-            data: {
-              status: 'RECEIVED',
-              receivedAt: new Date(),
-              items: {
-                update: receivedItems.map((item) => ({
-                  where: { id: item.id },
-                  data: { received: item.received }
-                }))
-              }
-            },
+            data: { isPaid },
             include: {
+              supplier: true,
               items: {
                 include: {
                   product: true
@@ -69,26 +61,54 @@ export default async function handler(
               }
             }
           })
+          return res.status(200).json(purchase)
+        }
 
-          // Update product stock
-          for (const item of receivedItems) {
-            const purchaseItem = purchase.items.find(pi => pi.id === item.id)
-            if (!purchaseItem) continue
-
-            await tx.product.update({
-              where: { id: purchaseItem.productId },
+        // If updating received status and items
+        if (status === 'RECEIVED' && receivedItems) {
+          // Start a transaction
+          const result = await prisma.$transaction(async (tx) => {
+            const purchase = await tx.purchase.update({
+              where: { id: String(id) },
               data: {
-                currentStock: {
-                  increment: item.received
+                status: 'RECEIVED',
+                receivedAt: new Date(),
+                items: {
+                  update: receivedItems.map((item) => ({
+                    where: { id: item.id },
+                    data: { received: item.received }
+                  }))
+                }
+              },
+              include: {
+                items: {
+                  include: {
+                    product: true
+                  }
                 }
               }
             })
-          }
 
-          return purchase
-        })
+            // Update product stock
+            for (const item of receivedItems) {
+              const purchaseItem = purchase.items.find(pi => pi.id === item.id)
+              if (!purchaseItem) continue
 
-        return res.status(200).json(result)
+              await tx.product.update({
+                where: { id: purchaseItem.productId },
+                data: {
+                  currentStock: {
+                    increment: item.received
+                  }
+                }
+              })
+            }
+
+            return purchase
+          })
+
+          return res.status(200).json(result)
+        }
       } catch (error) {
         console.error('Error updating purchase:', error)
         return res.status(500).json({ message: 'Error updating purchase' })

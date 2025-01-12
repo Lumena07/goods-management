@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { calculateVat, formatVatAmount, getVatBreakdown } from '@/lib/utils/vat'
+
+type VatPreference = 'VAT_INCLUSIVE' | 'VAT_EXCLUSIVE'
 
 interface Supplier {
   id: string
   name: string
+  vatPreference: VatPreference
 }
 
 interface Product {
@@ -26,7 +34,19 @@ interface SupplierPrice {
   }
 }
 
-export default function PurchaseForm() {
+interface PurchaseFormProps {
+  supplier?: {
+    id: string
+    name: string
+    email: string | null
+    phone: string
+    address: string | null
+    vatPreference: VatPreference
+  }
+  onSubmit: (data: any) => void
+}
+
+export default function PurchaseForm({ supplier, onSubmit }: PurchaseFormProps) {
   const router = useRouter()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -34,6 +54,10 @@ export default function PurchaseForm() {
   const [supplierPrices, setSupplierPrices] = useState<SupplierPrice[]>([])
   const [items, setItems] = useState<PurchaseItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [supplierVatPreference, setSupplierVatPreference] = useState<VatPreference>(
+    supplier?.vatPreference || 'VAT_INCLUSIVE'
+  )
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,14 +66,18 @@ export default function PurchaseForm() {
           fetch('/api/suppliers'),
           fetch('/api/products')
         ])
-        const [suppliersData, productsData] = await Promise.all([
-          suppliersRes.json(),
-          productsRes.json()
-        ])
-        setSuppliers(suppliersData)
-        setProducts(productsData)
+        
+        if (suppliersRes.ok && productsRes.ok) {
+          const [suppliersData, productsData] = await Promise.all([
+            suppliersRes.json(),
+            productsRes.json()
+          ])
+          setSuppliers(suppliersData)
+          setProducts(productsData)
+        }
       } catch (error) {
         console.error('Error fetching data:', error)
+        setError('Failed to load data')
       } finally {
         setLoading(false)
       }
@@ -60,6 +88,11 @@ export default function PurchaseForm() {
 
   useEffect(() => {
     if (selectedSupplier) {
+      const supplier = suppliers.find(s => s.id === selectedSupplier)
+      if (supplier) {
+        setSupplierVatPreference(supplier.vatPreference)
+      }
+
       const fetchPrices = async () => {
         try {
           const response = await fetch(`/api/suppliers/${selectedSupplier}/prices`)
@@ -71,10 +104,8 @@ export default function PurchaseForm() {
         }
       }
       fetchPrices()
-    } else {
-      setSupplierPrices([])
     }
-  }, [selectedSupplier])
+  }, [selectedSupplier, suppliers])
 
   const handleAddItem = () => {
     setItems([...items, { productId: '', quantity: 1, price: 0 }])
@@ -99,143 +130,173 @@ export default function PurchaseForm() {
     setItems(items.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const calculateItemTotal = (item: PurchaseItem) => {
+    const subtotal = item.quantity * item.price
+    const { totalPrice } = calculateVat(subtotal, supplierVatPreference)
+    return totalPrice
+  }
 
-    try {
-      const response = await fetch('/api/purchases', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          supplierId: selectedSupplier,
-          items: items.map(item => ({
-            ...item,
-            quantity: parseInt(item.quantity.toString()),
-            price: parseFloat(item.price.toString())
-          }))
-        })
-      })
-
-      if (response.ok) {
-        router.push('/purchases')
-      }
-    } catch (error) {
-      console.error('Error creating purchase:', error)
-    }
+  const calculateTotal = () => {
+    return items.reduce((sum, item) => sum + calculateItemTotal(item), 0)
   }
 
   if (loading) return <div>Loading...</div>
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Supplier
-        </label>
-        <select
-          required
-          value={selectedSupplier}
-          onChange={(e) => setSelectedSupplier(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="" className="py-2 px-3">Select Supplier</option>
-          {suppliers.map((supplier) => (
-            <option key={supplier.id} value={supplier.id} className="py-2 px-3">
-              {supplier.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      const calculatedItems = items.map(item => {
+        const subtotal = item.quantity * item.price;
+        const { basePrice, vatAmount, totalPrice } = calculateVat(subtotal, supplierVatPreference);
+        
+        return {
+          ...item,
+          quantity: parseInt(item.quantity.toString()),
+          price: parseFloat(item.price.toString()),
+          basePrice,
+          vatAmount,
+          total: totalPrice
+        }
+      });
 
+      const purchaseTotal = calculatedItems.reduce((sum, item) => sum + item.total, 0);
+      const purchaseBasePrice = calculatedItems.reduce((sum, item) => sum + item.basePrice, 0);
+      const purchaseVatAmount = calculatedItems.reduce((sum, item) => sum + item.vatAmount, 0);
+
+      onSubmit({
+        supplierId: selectedSupplier,
+        items: calculatedItems,
+        total: purchaseTotal,
+        basePrice: purchaseBasePrice,
+        vatAmount: purchaseVatAmount
+      })
+    }}>
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Items</h3>
-          <button
-            type="button"
-            onClick={handleAddItem}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
+
+        <div>
+          <Label htmlFor="supplier">Supplier</Label>
+          <Select
+            value={selectedSupplier}
+            onValueChange={(value) => setSelectedSupplier(value)}
           >
-            Add Item
-          </button>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a supplier" />
+            </SelectTrigger>
+            <SelectContent>
+              {suppliers.map(supplier => (
+                <SelectItem key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {items.map((item, index) => (
-          <div key={index} className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Product
-              </label>
-              <select
-                required
-                value={item.productId}
-                onChange={(e) => handleItemChange(index, 'productId', e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="" className="py-2 px-3">Select Product</option>
-                {supplierPrices.map(sp => (
-                  <option key={sp.productId} value={sp.productId} className="py-2 px-3">
-                    {sp.product.name} - TZS {sp.price}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Quantity
-              </label>
-              <input
-                type="number"
-                required
-                min="1"
-                value={item.quantity}
-                onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
-                className="mt-1 block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Price
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                step="0.01"
-                value={item.price}
-                onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                className="mt-1 block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <button
+        <div className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <Label className="text-lg">Items</Label>
+            <Button
               type="button"
-              onClick={() => handleRemoveItem(index)}
-              className="text-red-600 hover:text-red-900"
+              variant="outline"
+              onClick={handleAddItem}
             >
-              Remove
-            </button>
+              Add Item
+            </Button>
           </div>
-        ))}
-      </div>
+          {items.map((item, index) => (
+            <div key={index} className="grid grid-cols-12 gap-4 mt-2">
+              <div className="col-span-5">
+                <Label>Product</Label>
+                <Select
+                  value={item.productId}
+                  onValueChange={(value) => handleItemChange(index, 'productId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supplierPrices.map(sp => (
+                      <SelectItem key={sp.productId} value={sp.productId}>
+                        {sp.product.name} @ TZS {sp.price.toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-3">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  required
+                  min="1"
+                  value={item.quantity}
+                  onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div className="col-span-3">
+                <Label>Price (TZS)</Label>
+                <Input
+                  type="number"
+                  value={item.price}
+                  disabled
+                  className="w-full bg-gray-50 cursor-not-allowed"
+                />
+              </div>
+              <div className="col-span-1 flex items-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleRemoveItem(index)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
 
-      <div className="flex justify-end space-x-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          Create Purchase
-        </button>
+        <div className="mt-6 border-t pt-4">
+          <div className="flex justify-end">
+            <div className="w-1/3 space-y-2 text-sm text-gray-600 border rounded-md p-4 bg-gray-50">
+              {items.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>{formatVatAmount(items.reduce((sum, item) => sum + (item.quantity * item.price), 0))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>VAT Amount:</span>
+                    <span>{formatVatAmount(items.reduce((sum, item) => {
+                      const subtotal = item.quantity * item.price;
+                      const { vatAmount } = getVatBreakdown(subtotal, supplierVatPreference);
+                      return sum + parseFloat(vatAmount.replace(/[^0-9.-]+/g, ''));
+                    }, 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-gray-900 border-t pt-2">
+                    <span>Total:</span>
+                    <span>{formatVatAmount(calculateTotal())}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6 space-x-4">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            Create Purchase
+          </Button>
+        </div>
       </div>
     </form>
   )

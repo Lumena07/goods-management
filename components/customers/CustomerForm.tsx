@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Prisma } from '@prisma/client'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+
+type VatPreference = 'VAT_INCLUSIVE' | 'VAT_EXCLUSIVE'
 
 interface CustomerFormProps {
   customer?: {
@@ -14,19 +18,12 @@ interface CustomerFormProps {
     address: string | null
     isAccredited: boolean
     creditLimit: number | null
+    vatPreference: VatPreference
   }
+  onSubmit: (data: any) => void
 }
 
-interface CustomerFormData {
-  name: string
-  email?: string
-  phone: string
-  address?: string
-  isAccredited: boolean
-  creditLimit?: number
-}
-
-export default function CustomerForm({ customer }: CustomerFormProps) {
+export default function CustomerForm({ customer, onSubmit }: CustomerFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     name: customer?.name || '',
@@ -34,40 +31,19 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
     phone: customer?.phone || '',
     address: customer?.address || '',
     isAccredited: customer?.isAccredited || false,
-    creditLimit: customer?.creditLimit?.toString() || ''
+    creditLimit: customer?.creditLimit || 0,
+    vatPreference: customer?.vatPreference || 'VAT_INCLUSIVE'
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const url = customer 
-      ? `/api/customers/${customer.id}`
-      : '/api/customers'
-    
-    const method = customer ? 'PUT' : 'POST'
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          creditLimit: formData.creditLimit ? parseFloat(formData.creditLimit) : null
-        })
-      })
-
-      if (response.ok) {
-        router.push('/customers')
-      }
-    } catch (error) {
-      console.error('Error saving customer:', error)
-    }
+  const handleChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="pt-8 space-y-8" data-testid="customer-form">
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      onSubmit(formData)
+    }} className="pt-8 space-y-8" data-testid="customer-form">
       <div>
         <h2 className="text-2xl font-bold">
           {customer ? 'Edit' : 'New'} Customer
@@ -82,8 +58,8 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
             type="text"
             required
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="mt-1"
+            onChange={(e) => handleChange('name', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3"
           />
         </div>
 
@@ -93,8 +69,8 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
             id="email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="mt-1"
+            onChange={(e) => handleChange('email', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3"
           />
         </div>
 
@@ -105,8 +81,8 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
             type="tel"
             required
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="mt-1"
+            onChange={(e) => handleChange('phone', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3"
           />
         </div>
 
@@ -116,43 +92,56 @@ export default function CustomerForm({ customer }: CustomerFormProps) {
             id="address"
             type="text"
             value={formData.address || ''}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="mt-1"
+            onChange={(e) => handleChange('address', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3"
           />
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="isAccredited"
-            checked={formData.isAccredited}
-            onCheckedChange={(checked) => 
-              setFormData({ ...formData, isAccredited: checked as boolean })
-            }
-          />
-          <Label 
-            htmlFor="isAccredited"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Accredited for Credit Sales
-          </Label>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="vatPreference">VAT Preference</Label>
+        <Select
+          value={formData.vatPreference}
+          onValueChange={(value) => handleChange('vatPreference', value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select VAT preference" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="VAT_INCLUSIVE">VAT Inclusive</SelectItem>
+            <SelectItem value="VAT_EXCLUSIVE">VAT Exclusive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        {formData.isAccredited && (
-          <div className="w-1/2">
-            <Label htmlFor="creditLimit">Credit Limit</Label>
-            <Input
-              id="creditLimit"
-              type="number"
-              required={formData.isAccredited}
-              value={formData.creditLimit}
-              onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
-              className="mt-1"
+      <div className="space-y-2">
+        <Label htmlFor="isAccredited">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isAccredited"
+              checked={formData.isAccredited}
+              onCheckedChange={(checked) => 
+                handleChange('isAccredited', checked)
+              }
             />
+            <span>Accredited Customer</span>
           </div>
-        )}
+        </Label>
       </div>
+
+      {formData.isAccredited && (
+        <div className="space-y-2">
+          <Label htmlFor="creditLimit">Credit Limit</Label>
+          <Input
+            type="number"
+            id="creditLimit"
+            name="creditLimit"
+            value={formData.creditLimit}
+            onChange={(e) => handleChange('creditLimit', parseFloat(e.target.value))}
+            placeholder="Enter credit limit"
+          />
+        </div>
+      )}
 
       <div className="flex justify-end space-x-4 pt-6">
         <Button

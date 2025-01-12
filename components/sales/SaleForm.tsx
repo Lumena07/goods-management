@@ -1,19 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { Button } from "@/components/ui/button"
-
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { calculateVat, formatVatAmount, getVatBreakdown } from '@/lib/utils/vat'
+import { Checkbox } from "@/components/ui/checkbox"
+type VatPreference = 'VAT_INCLUSIVE' | 'VAT_EXCLUSIVE'
 interface Product {
   id: string
   name: string
   basePrice: number
   currentStock: number
+  customPrices: Array<{
+    customerId: string
+    price: number
+  }>
 }
 
 interface Customer {
   id: string
   name: string
   isAccredited: boolean
-  customPrices: CustomPrice[]
+  vatPreference: VatPreference
 }
 
 interface SaleItem {
@@ -23,24 +32,18 @@ interface SaleItem {
   discount: number
 }
 
-interface CustomPrice {
-  productId: string
-  price: number
-  product: {
-    id: string
-    name: string
-    basePrice: number
-  }
+interface SaleFormProps {
+  onSubmit: (data: any) => void
 }
 
-export default function SaleForm() {
+export default function SaleForm({ onSubmit }: SaleFormProps) {
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [isAccredited, setIsAccredited] = useState(false)
+  const [customerVatPreference, setCustomerVatPreference] = useState<VatPreference>('VAT_INCLUSIVE')
   const [items, setItems] = useState<SaleItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [isAccredited, setIsAccredited] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -50,301 +53,287 @@ export default function SaleForm() {
           fetch('/api/products'),
           fetch('/api/customers')
         ])
-        const [productsData, customersData] = await Promise.all([
-          productsRes.json(),
-          customersRes.json()
-        ])
-        setProducts(productsData)
-        setCustomers(customersData)
+        
+        if (productsRes.ok && customersRes.ok) {
+          const [productsData, customersData] = await Promise.all([
+            productsRes.json(),
+            customersRes.json()
+          ])
+          console.log('Fetched products with custom prices:', productsData)
+          setProducts(productsData)
+          setCustomers(customersData)
+        }
       } catch (error) {
         console.error('Error fetching data:', error)
-      } finally {
-        setLoading(false)
+        setError('Failed to load data')
       }
     }
 
     fetchData()
   }, [])
 
+  useEffect(() => {
+    if (selectedCustomer) {
+      setCustomerVatPreference(selectedCustomer.vatPreference)
+      setIsAccredited(selectedCustomer.isAccredited)
+    }
+  }, [selectedCustomer])
+
   const handleAddItem = () => {
-    setItems([...items, { 
-      productId: '', 
-      quantity: 1, 
-      price: 0,
-      discount: 0 
-    }])
+    setItems([...items, { productId: '', quantity: 1, price: 0, discount: 0 }])
   }
 
-  const handleItemChange = async (index: number, field: keyof SaleItem, value: any) => {
+  const handleItemChange = (index: number, field: keyof SaleItem, value: any) => {
     const newItems = [...items]
-    if (field === 'productId') {
-      const productId = value
-      const product = products.find(p => p.id === productId)
-      if (!product) return
+    newItems[index] = { ...newItems[index], [field]: value }
 
-      console.log('Selected customer:', selectedCustomer)
-      console.log('Custom prices:', selectedCustomer?.customPrices)
-
-      let price = product.basePrice
-      if (selectedCustomer?.customPrices) {
-        const customPrice = selectedCustomer.customPrices.find(
-          cp => cp.productId === productId
-        )
-        console.log('Found custom price:', customPrice)
+    if (field === 'productId' && selectedCustomer && products?.length > 0) {
+      const product = products.find(p => p.id === value)
+      if (product) {
+        const customPrice = product.customPrices?.find(cp => cp.customerId === selectedCustomer.id)
         if (customPrice) {
-          price = customPrice.price
+          newItems[index].price = customPrice.price
+        } else {
+          newItems[index].price = product.basePrice
         }
       }
-
-      newItems[index] = {
-        ...newItems[index],
-        productId,
-        price,
-        quantity: 1,
-        discount: 0
-      }
-    } else {
-      newItems[index] = { ...newItems[index], [field]: value }
     }
-    console.log('Updated items:', newItems)
+
     setItems(newItems)
-    calculateTotal()
   }
 
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index))
   }
 
+  const calculateItemTotal = (item: SaleItem) => {
+    const subtotal = item.quantity * item.price;
+    const discountAmount = (subtotal * (item.discount || 0)) / 100;
+    const afterDiscount = subtotal - discountAmount;
+    const { totalPrice } = calculateVat(afterDiscount, customerVatPreference);
+    return totalPrice;
+  }
+
   const calculateTotal = () => {
-    return items.reduce((sum, item) => {
-      const subtotal = item.quantity * item.price
-      return sum + (subtotal - (subtotal * item.discount / 100))
-    }, 0)
+    return items.reduce((sum, item) => sum + calculateItemTotal(item), 0)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          customerId: selectedCustomer?.id || null,
-          isAccredited,
-          items: items.map(item => ({
-            ...item,
-            quantity: parseInt(item.quantity.toString()),
-            price: parseFloat(item.price.toString()),
-            discount: parseFloat(item.discount.toString())
-          }))
-        })
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message)
-      }
-
-      router.push('/sales')
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Error creating sale')
-    }
-  }
-
-  const handleCustomerChange = async (customerId: string) => {
-    try {
-      if (!customerId) {
-        // If no customer is selected, reset to base prices
-        const newItems = items.map(item => {
-          const product = products.find(p => p.id === item.productId)
-          return {
-            ...item,
-            price: product ? product.basePrice : item.price
-          }
-        })
-        setItems(newItems)
-        setSelectedCustomer(null)
-        calculateTotal()
-        return
-      }
-
-      const response = await fetch(`/api/customers/${customerId}`)
-      if (!response.ok) throw new Error('Failed to fetch customer')
-      const customer = await response.json()
-      console.log('Customer data:', customer)
-      setSelectedCustomer(customer)
-
-      // Update prices for all items based on whether customer has custom prices
-      const newItems = items.map(item => {
-        const customPrice = customer.customPrices?.find(
-          cp => cp.productId === item.productId
-        )
-        const product = products.find(p => p.id === item.productId)
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      const calculatedItems = items.map(item => {
+        const subtotal = item.quantity * item.price;
+        const discountAmount = (subtotal * (item.discount || 0)) / 100;
+        const afterDiscount = subtotal - discountAmount;
+        const { basePrice, vatAmount, totalPrice } = calculateVat(afterDiscount, customerVatPreference);
         
         return {
           ...item,
-          // Use custom price if available, otherwise use base price
-          price: customPrice ? customPrice.price : (product ? product.basePrice : item.price)
+          quantity: parseInt(item.quantity.toString()),
+          price: parseFloat(item.price.toString()),
+          discount: parseFloat(item.discount.toString()),
+          basePrice,
+          vatAmount,
+          total: totalPrice
         }
+      });
+
+      const saleTotal = calculatedItems.reduce((sum, item) => sum + item.total, 0);
+      const saleBasePrice = calculatedItems.reduce((sum, item) => sum + item.basePrice, 0);
+      const saleVatAmount = calculatedItems.reduce((sum, item) => sum + item.vatAmount, 0);
+
+      onSubmit({
+        customerId: selectedCustomer?.id,
+        isAccredited,
+        items: calculatedItems,
+        total: saleTotal,
+        basePrice: saleBasePrice,
+        vatAmount: saleVatAmount
       })
-      setItems(newItems)
-      calculateTotal()
-    } catch (error) {
-      console.error('Error fetching customer:', error)
-    }
-  }
-
-  if (loading) return <div>Loading...</div>
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <p className="text-red-700">{error}</p>
-        </div>
-      )}
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Customer (Optional)
-        </label>
-        <select
-          value={selectedCustomer?.id || ''}
-          onChange={(e) => handleCustomerChange(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="" className="py-2 px-3">Select Customer</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id} className="py-2 px-3">
-              {customer.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {selectedCustomer && customers.find(c => c.id === selectedCustomer.id)?.isAccredited && (
-        <div>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={isAccredited}
-              onChange={(e) => setIsAccredited(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="ml-2 text-sm text-gray-600">
-              Accredited Sale (Credit)
-            </span>
-          </label>
-        </div>
-      )}
-
+    }}>
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Sale Items</h3>
-          <button
-            type="button"
-            onClick={handleAddItem}
-            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-500"
+        <div>
+          <Label htmlFor="customer">Customer</Label>
+          <Select
+            value={selectedCustomer?.id || ''}
+            onValueChange={(value) => {
+              const customer = customers.find(c => c.id === value)
+              console.log('Selected customer:', customer)
+              setSelectedCustomer(customer || null)
+              
+              if (customer) {
+                setItems(prevItems => prevItems.map(item => {
+                  if (!item.productId) return item
+                  
+                  const product = products.find(p => p.id === item.productId)
+                  console.log('Checking product for custom price:', product)
+                  if (!product) return item
+
+                  const customPrice = product.customPrices?.find(cp => cp.customerId === customer.id)
+                  console.log('Custom price found for this customer:', customPrice)
+                  if (customPrice) {
+                    return {
+                      ...item,
+                      price: customPrice.price
+                    }
+                  } else {
+                    return {
+                      ...item,
+                      price: product.basePrice
+                    }
+                  }
+                }))
+              }
+            }}
           >
-            Add Item
-          </button>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a customer" />
+            </SelectTrigger>
+            <SelectContent>
+              {customers.map(customer => (
+                <SelectItem key={customer.id} value={customer.id}>
+                  {customer.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {items.map((item, index) => (
-          <div key={index} className="flex gap-4 items-end border-b pb-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Product
-              </label>
-              <select
-                required
-                value={item.productId}
-                onChange={(e) => handleItemChange(index, 'productId', e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="" className="py-2 px-3">Select Product</option>
-                {products.map((product) => (
-                  <option 
-                    key={product.id} 
-                    value={product.id}
-                    disabled={product.currentStock <= 0}
-                    className="py-2 px-3"
-                  >
-                    {product.name} ({product.currentStock} in stock)
-                  </option>
-                ))}
-              </select>
-            </div>
+        {selectedCustomer?.isAccredited && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isAccredited"
+              checked={isAccredited}
+              onCheckedChange={(checked) => setIsAccredited(checked as boolean)}
+            />
+            <Label htmlFor="isAccredited">Create as Accredited Sale</Label>
+          </div>
+        )}
 
-            <div className="w-24">
-              <label className="block text-sm font-medium text-gray-700">
-                Quantity
-              </label>
-              <input
-                type="number"
-                required
-                min="1"
-                value={item.quantity}
-                onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Price
-              </label>
-              <div className="mt-1 text-sm text-gray-900">
-                TZS {item.price.toLocaleString()}
+        <div className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <Label className="text-lg">Items</Label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddItem}
+            >
+              Add Item
+            </Button>
+          </div>
+          {items.map((item, index) => (
+            <div key={index} className="grid grid-cols-12 gap-4 mt-2">
+              <div className="col-span-5">
+                <Label>Product</Label>
+                <Select
+                  value={item.productId}
+                  onValueChange={(value) => handleItemChange(index, 'productId', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map(product => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  value={item.quantity}
+                  onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                  placeholder="Quantity"
+                  min="1"
+                  className="w-full"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Price (TZS)</Label>
+                <Input
+                  type="number"
+                  value={item.price}
+                  disabled
+                  className="w-full bg-gray-50 cursor-not-allowed"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Discount (%)</Label>
+                <Input
+                  type="number"
+                  value={item.discount}
+                  onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value))}
+                  placeholder="Discount %"
+                  min="0"
+                  max="100"
+                  className="w-full"
+                />
+              </div>
+              <div className="col-span-1 flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleRemoveItem(index)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </Button>
               </div>
             </div>
-
-            <div className="w-24">
-              <label className="block text-sm font-medium text-gray-700">
-                Discount %
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={item.discount}
-                onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleRemoveItem(index)}
-              className="text-red-600 hover:text-red-900"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col items-end gap-4 pt-4">
-        <div className="text-lg font-semibold">
-          Total: TZS {calculateTotal().toLocaleString()}
+          ))}
         </div>
-        <div className="space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
+
+        <div className="mt-6 border-t pt-4">
+          <div className="flex justify-end">
+            <div className="w-1/3 space-y-2 text-sm text-gray-600 border rounded-md p-4 bg-gray-50">
+              {items.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>{formatVatAmount(items.reduce((sum, item) => {
+                      const itemTotal = item.quantity * item.price;
+                      const { basePrice } = calculateVat(itemTotal, customerVatPreference);
+                      return sum + basePrice;
+                    }, 0))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>VAT Amount:</span>
+                    <span>{formatVatAmount(items.reduce((sum, item) => {
+                      const itemTotal = item.quantity * item.price;
+                      const { vatAmount } = calculateVat(itemTotal, customerVatPreference);
+                      return sum + vatAmount;
+                    }, 0))}</span>
+                  </div>
+                  {items.some(item => item.discount > 0) && (
+                    <div className="flex justify-between text-red-600">
+                      <span>Total Discounts:</span>
+                      <span>-{formatVatAmount(items.reduce((sum, item) => {
+                        const itemTotal = item.quantity * item.price;
+                        const { basePrice } = calculateVat(itemTotal, customerVatPreference);
+                        return sum + (basePrice * (item.discount || 0) / 100);
+                      }, 0))}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold text-gray-900 border-t pt-2">
+                    <span>Total:</span>
+                    <span>{formatVatAmount(calculateTotal())}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6 space-x-4">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={items.length === 0}
-          >
-            {items.length === 0 ? 'No items to create' : 'Create Sale'}
+          <Button type="submit">
+            Create Sale
           </Button>
         </div>
       </div>

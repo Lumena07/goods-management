@@ -1,4 +1,3 @@
-// This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,64 +7,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  SALES_CLERK
-}
-
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  password      String
-  role          Role      @default(ADMIN)
-  isApproved    Boolean   @default(false)
-  tempPassword  Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         Role     @default(ADMIN)
+  isApproved   Boolean  @default(false)
+  tempPassword Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Customer {
-  id            String          @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String
-  email         String?         @unique
+  email         String?       @unique
   phone         String
   address       String?
-  isAccredited  Boolean         @default(false)
+  isAccredited  Boolean       @default(false)
   creditLimit   Float?
-  sales         Sale[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  vatPreference VatPreference @default(VAT_INCLUSIVE)
   customPrices  CustomPrice[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  sales         Sale[]
 }
 
 model CustomPrice {
-  id          String    @id @default(cuid())
-  customerId  String
-  productId   String
-  price       Float
-  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  customerId String
+  productId  String
+  price      Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, productId])
 }
 
 model Sale {
-  id          String    @id @default(cuid())
-  customerId  String?
-  customer    Customer? @relation(fields: [customerId], references: [id])
-  items       SaleItem[]
-  total       Float
-  isPaid      Boolean   @default(false)
-  isAccredited Boolean  @default(false)
-  invoiceNumber String? @unique
-  dueDate     DateTime?
-  payments    Payment[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-   @@index([customerId])
+  id            String     @id @default(cuid())
+  customerId    String?
+  total         Float
+  basePrice     Float
+  vatAmount     Float
+  isPaid        Boolean    @default(false)
+  isAccredited  Boolean    @default(false)
+  invoiceNumber String?
+  dueDate       DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  payments      Payment[]
+  customer      Customer?  @relation(fields: [customerId], references: [id])
+  items         SaleItem[]
+
+  @@index([customerId])
 }
 
 model Supplier {
@@ -74,21 +72,22 @@ model Supplier {
   email         String?
   phone         String
   address       String
-  prices        SupplierPrice[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  vatPreference VatPreference   @default(VAT_INCLUSIVE)
   purchases     Purchase[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  prices        SupplierPrice[]
 }
 
 model SupplierPrice {
-  id          String    @id @default(cuid())
-  supplier    Supplier  @relation(fields: [supplierId], references: [id])
-  supplierId  String
-  product     Product   @relation(fields: [productId], references: [id])
-  productId   String
-  price       Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  supplierId String
+  productId  String
+  price      Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id])
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
 
   @@unique([supplierId, productId])
   @@index([supplierId])
@@ -96,18 +95,96 @@ model SupplierPrice {
 }
 
 model Purchase {
-  id         String   @id @default(cuid())
-  supplier   Supplier    @relation(fields: [supplierId], references: [id])
+  id         String         @id @default(cuid())
   supplierId String
   total      Float
-  isPaid     Boolean  @default(false)
+  basePrice  Float
+  vatAmount  Float
+  isPaid     Boolean        @default(false)
   status     PurchaseStatus @default(PENDING)
   receivedAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  supplier   Supplier       @relation(fields: [supplierId], references: [id])
   items      PurchaseItem[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 
   @@index([supplierId])
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  purchaseId String
+  productId  String
+  quantity   Int
+  received   Int      @default(0)
+  price      Float
+  basePrice  Float
+  vatAmount  Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id])
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  name           String
+  basePrice      Float
+  currentStock   Int             @default(0)
+  minStock       Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  priceType      VatPreference   @default(VAT_INCLUSIVE)
+  customPrices   CustomPrice[]
+  purchaseItems  PurchaseItem[]
+  saleItems      SaleItem[]
+  supplierPrices SupplierPrice[]
+}
+
+model SaleItem {
+  id        String   @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  price     Float
+  basePrice Float
+  vatAmount Float
+  discount  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  saleId     String
+  amount     Float
+  method     PaymentMethod
+  reference  String?
+  notes      String?
+  recordedBy String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  sale       Sale          @relation(fields: [saleId], references: [id])
+
+  @@index([saleId])
+}
+
+enum Role {
+  ADMIN
+  SALES_CLERK
+}
+
+enum VatPreference {
+  VAT_INCLUSIVE
+  VAT_EXCLUSIVE
 }
 
 enum PurchaseStatus {
@@ -116,65 +193,8 @@ enum PurchaseStatus {
   CANCELLED
 }
 
-model PurchaseItem {
-  id         String   @id @default(cuid())
-  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  purchaseId String
-  product    Product  @relation(fields: [productId], references: [id])
-  productId  String
-  quantity   Int
-  price      Float
-  received   Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
-
-model Product {
-  id            String          @id @default(cuid())
-  name          String
-  basePrice     Float
-  currentStock  Int            @default(0)
-  minStock      Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  supplierPrices SupplierPrice[]
-  purchaseItems PurchaseItem[]
-  saleItems     SaleItem[]
-  customPrices  CustomPrice[]
-}
-
-model SaleItem {
-  id        String   @id @default(cuid())
-  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  saleId    String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  quantity  Int
-  price     Float
-  discount  Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@index([saleId])
-  @@index([productId])
-}
-
 enum PaymentMethod {
   CASH
   BANK_TRANSFER
   CHECK
-}
-
-model Payment {
-  id            String        @id @default(cuid())
-  sale          Sale          @relation(fields: [saleId], references: [id])
-  saleId        String
-  amount        Float
-  method        PaymentMethod
-  reference     String?       // For bank transfers and checks
-  notes         String?
-  recordedBy    String        // Email of user who recorded the payment
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([saleId])
 }

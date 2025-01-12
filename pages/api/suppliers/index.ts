@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { VatPreference } from '@prisma/client'
 
 export default async function handler(
   req: NextApiRequest,
@@ -40,7 +41,8 @@ export default async function handler(
             name: req.body.name,
             email: req.body.email,
             phone: req.body.phone,
-            address: req.body.address
+            address: req.body.address,
+            vatPreference: req.body.vatPreference as VatPreference
           }
         })
         return res.status(201).json(supplier)

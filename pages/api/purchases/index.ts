@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { calculateVat } from '@/lib/utils/vat'
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,43 +37,65 @@ export default async function handler(
       try {
         const { supplierId, items } = req.body
 
-        // Verify all prices match supplier's prices
-        const supplierPrices = await prisma.supplierPrice.findMany({
-          where: { supplierId }
+        // Get supplier's VAT preference
+        const supplier = await prisma.supplier.findUnique({
+          where: { id: supplierId }
         })
 
-        for (const item of items) {
-          const supplierPrice = supplierPrices.find(sp => sp.productId === item.productId)
-          if (!supplierPrice || supplierPrice.price !== item.price) {
-            return res.status(400).json({ 
-              message: 'Item prices must match supplier prices' 
-            })
-          }
+        if (!supplier) {
+          return res.status(400).json({ message: 'Supplier not found' })
         }
 
-        const purchase = await prisma.purchase.create({
-          data: {
-            supplierId,
-            total: items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-            items: {
-              create: items.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                price: item.price
-              }))
-            }
-          },
-          include: {
-            supplier: true,
-            items: {
-              include: {
-                product: true
-              }
-            }
+        // Calculate totals with VAT
+        const calculatedItems = items.map(item => {
+          const subtotal = item.quantity * item.price
+          const { basePrice, vatAmount, totalPrice } = calculateVat(subtotal, supplier.vatPreference)
+
+          return {
+            ...item,
+            basePrice,
+            vatAmount,
+            total: totalPrice
           }
         })
 
-        return res.status(201).json(purchase)
+        const purchaseTotal = calculatedItems.reduce((sum, item) => sum + item.total, 0)
+        const purchaseBasePrice = calculatedItems.reduce((sum, item) => sum + item.basePrice, 0)
+        const purchaseVatAmount = calculatedItems.reduce((sum, item) => sum + item.vatAmount, 0)
+
+        // Create purchase in transaction
+        const result = await prisma.$transaction(async (tx) => {
+          // Create the purchase
+          const purchase = await tx.purchase.create({
+            data: {
+              supplierId,
+              total: purchaseTotal,
+              basePrice: purchaseBasePrice,
+              vatAmount: purchaseVatAmount,
+              items: {
+                create: calculatedItems.map(item => ({
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  price: item.price,
+                  basePrice: item.basePrice,
+                  vatAmount: item.vatAmount
+                }))
+              }
+            },
+            include: {
+              supplier: true,
+              items: {
+                include: {
+                  product: true
+                }
+              }
+            }
+          })
+
+          return purchase
+        })
+
+        return res.status(201).json(result)
       } catch (error) {
         console.error('Error creating purchase:', error)
         return res.status(500).json({ message: 'Error creating purchase' })

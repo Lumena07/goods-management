@@ -49,7 +49,7 @@ export default async function handler(
 
     case 'PUT':
       try {
-        const { name, email, phone, isAccredited, creditLimit } = req.body
+        const { name, email, phone, address, isAccredited, creditLimit, vatPreference } = req.body
 
         const customer = await prisma.customer.update({
           where: { id: String(id) },
@@ -57,8 +57,10 @@ export default async function handler(
             name,
             email,
             phone,
+            address,
             isAccredited,
-            creditLimit
+            creditLimit,
+            vatPreference
           }
         })
         return res.status(200).json(customer)

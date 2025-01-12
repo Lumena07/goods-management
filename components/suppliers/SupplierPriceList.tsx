@@ -80,6 +80,57 @@ export default function SupplierPriceList({ supplierId, prices: initialPrices }:
 
   return (
     <div>
+         {session?.user.role === 'ADMIN' && (
+        <form onSubmit={handleSubmit} className="mb-8">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="product" className="block text-sm font-medium text-gray-700">
+                Product
+              </label>
+              <select
+                id="product"
+                required
+                value={newPrice.productId}
+                onChange={(e) => setNewPrice({ ...newPrice, productId: e.target.value })}
+                onClick={() => !products.length && fetchProducts()}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3"
+              >
+                <option value="">Select a product</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+                Price
+              </label>
+              <input
+                id="price"
+                type="number"
+                required
+                value={newPrice.price}
+                onChange={(e) => setNewPrice({ ...newPrice, price: e.target.value })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              >
+                Add Price
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
       <div className="bg-white shadow-sm rounded-lg">
         <div className="px-4 py-5 sm:px-6">
           <h3 className="text-lg font-medium text-gray-900">Product Prices</h3>
@@ -124,56 +175,7 @@ export default function SupplierPriceList({ supplierId, prices: initialPrices }:
         </table>
       </div>
 
-      {session?.user.role === 'ADMIN' && (
-        <form onSubmit={handleSubmit} className="mt-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="product" className="block text-sm font-medium text-gray-700">
-                Product
-              </label>
-              <select
-                id="product"
-                required
-                value={newPrice.productId}
-                onChange={(e) => setNewPrice({ ...newPrice, productId: e.target.value })}
-                onClick={() => !products.length && fetchProducts()}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="">Select a product</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                Price
-              </label>
-              <input
-                id="price"
-                type="number"
-                required
-                value={newPrice.price}
-                onChange={(e) => setNewPrice({ ...newPrice, price: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            >
-              Add Price
-            </button>
-          </div>
-        </form>
-      )}
+     
     </div>
   )
 } 

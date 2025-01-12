@@ -23,6 +23,8 @@ interface SaleInvoice {
     discount: number
   }[]
   total: number
+  basePrice: number
+  vatAmount: number
 }
 
 // You should move this to an environment variable or configuration file

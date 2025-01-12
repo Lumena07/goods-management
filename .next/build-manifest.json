@@ -22,45 +22,15 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/auth/login": [
+    "/customers/[id]/statement": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/auth/login.js"
+      "static/chunks/pages/customers/[id]/statement.js"
     ],
-    "/dashboard": [
+    "/reports": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/dashboard.js"
-    ],
-    "/products": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/products.js"
-    ],
-    "/products/[id]": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/products/[id].js"
-    ],
-    "/products/[id]/edit": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/products/[id]/edit.js"
-    ],
-    "/purchases": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/purchases.js"
-    ],
-    "/sales": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/sales.js"
-    ],
-    "/suppliers": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/suppliers.js"
+      "static/chunks/pages/reports.js"
     ]
   },
   "ampFirstPages": []

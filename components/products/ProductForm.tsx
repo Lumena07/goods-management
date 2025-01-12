@@ -9,21 +9,26 @@ interface ProductFormProps {
     id: string
     name: string
     basePrice: number
-    minStock: number
     currentStock: number
+    minStock: number
   }
+  onSubmit: (data: any) => void
 }
 
-export default function ProductForm({ product }: ProductFormProps) {
+export default function ProductForm({ product, onSubmit }: ProductFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     name: product?.name || '',
-    basePrice: product?.basePrice?.toString() || '',
-    minStock: product?.minStock?.toString() || '',
-    currentStock: product?.currentStock?.toString() || ''
+    basePrice: product?.basePrice || 0,
+    currentStock: product?.currentStock || 0,
+    minStock: product?.minStock || 0,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const handleChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,31 +36,12 @@ export default function ProductForm({ product }: ProductFormProps) {
     setError('')
 
     try {
-      const url = product 
-        ? `/api/products/${product.id}`
-        : '/api/products'
-      
-      const method = product ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          basePrice: parseFloat(formData.basePrice),
-          minStock: parseInt(formData.minStock),
-          currentStock: parseInt(formData.currentStock)
-        })
+      await onSubmit({
+        name: formData.name,
+        basePrice: Number(formData.basePrice),
+        minStock: Number(formData.minStock),
+        currentStock: Number(formData.currentStock)
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message)
-      }
-
-      router.push('/products')
     } catch (error) {
       console.error('Error saving product:', error)
       setError(error instanceof Error ? error.message : 'Error saving product')
@@ -87,7 +73,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             type="text"
             required
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => handleChange('name', e.target.value)}
             className="mt-1"
           />
         </div>
@@ -102,7 +88,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             min="0"
             step="0.01"
             value={formData.basePrice}
-            onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
+            onChange={(e) => handleChange('basePrice', e.target.value)}
             className="mt-1"
           />
         </div>
@@ -116,7 +102,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             required
             min="0"
             value={formData.currentStock}
-            onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
+            onChange={(e) => handleChange('currentStock', e.target.value)}
             className="mt-1"
           />
         </div>
@@ -130,7 +116,7 @@ export default function ProductForm({ product }: ProductFormProps) {
             required
             min="0"
             value={formData.minStock}
-            onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
+            onChange={(e) => handleChange('minStock', e.target.value)}
             className="mt-1"
           />
         </div>

@@ -2,6 +2,19 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import { prisma } from '@/lib/prisma'
+import { calculateVat } from '@/lib/utils/vat'
+
+type VatPreference = 'VAT_INCLUSIVE' | 'VAT_EXCLUSIVE'
+
+interface CustomerWithPrices {
+  id: string
+  vatPreference: VatPreference
+  creditLimit: number
+  customPrices: Array<{
+    productId: string
+    price: number
+  }>
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,59 +49,62 @@ export default async function handler(
       try {
         const { customerId, items, isAccredited } = req.body
 
-        // Validate stock levels
-        for (const item of items) {
-          const product = await prisma.product.findUnique({
-            where: { id: item.productId }
-          })
-          
-          if (!product) {
-            return res.status(400).json({ 
-              message: `Product not found: ${item.productId}` 
-            })
+        // Get customer's VAT preference
+        const customer = (await prisma.customer.findUnique({
+          where: { id: customerId },
+          include: {
+            customPrices: true
           }
+        }) as unknown) as CustomerWithPrices
 
-          if (product.currentStock <= product.minStock) {
-            return res.status(400).json({ 
-              message: `${product.name} is at or below minimum stock level` 
-            })
-          }
-
-          if (product.currentStock < item.quantity) {
-            return res.status(400).json({ 
-              message: `Insufficient stock for ${product.name}` 
-            })
-          }
+        if (!customer) {
+          return res.status(400).json({ message: 'Customer not found' })
         }
 
-        // If accredited sale, validate customer credit limit
-        if (isAccredited && customerId) {
-          const customer = await prisma.customer.findUnique({
-            where: { id: customerId },
-            include: {
-              sales: {
-                where: { isPaid: false }
-              }
+        // Calculate totals with VAT
+        const calculatedItems = items.map(item => {
+          const customerPrice = customer.customPrices.find(cp => cp.productId === item.productId)
+          const price = customerPrice ? customerPrice.price : item.price
+          
+          const subtotal = item.quantity * price
+          const discountAmount = (subtotal * (item.discount || 0)) / 100
+          const afterDiscount = subtotal - discountAmount
+          
+          const { basePrice, vatAmount, totalPrice } = calculateVat(afterDiscount, customer.vatPreference)
+
+          return {
+            ...item,
+            price,
+            basePrice,
+            vatAmount,
+            total: totalPrice
+          }
+        })
+
+        // Use the totals from the form
+        const { total: saleTotal, basePrice: saleBasePrice, vatAmount: saleVatAmount } = req.body
+
+        // Check credit limit for accredited sales
+        if (isAccredited) {
+          const unpaidTotal = await prisma.sale.aggregate({
+            where: {
+              customerId,
+              isPaid: false
+            },
+            _sum: {
+              total: true
             }
           })
 
-          if (!customer?.isAccredited) {
+          const currentUnpaid = unpaidTotal._sum.total || 0
+          if (currentUnpaid + saleTotal > customer.creditLimit) {
             return res.status(400).json({ 
-              message: 'Customer is not accredited for credit sales' 
-            })
-          }
-
-          const unpaidTotal = customer.sales.reduce((sum, sale) => sum + sale.total, 0)
-          const newTotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0)
-
-          if (customer.creditLimit && (unpaidTotal + newTotal) > customer.creditLimit) {
-            return res.status(400).json({ 
-              message: 'Sale would exceed customer credit limit' 
+              message: 'This sale would exceed the customer\'s credit limit' 
             })
           }
         }
 
-        // Create sale and update stock in transaction
+        // Create sale in transaction
         const result = await prisma.$transaction(async (tx) => {
           // Create the sale
           const sale = await tx.sale.create({
@@ -96,18 +112,22 @@ export default async function handler(
               customerId,
               isAccredited,
               isPaid: !isAccredited, // Cash sales are paid immediately
-              total: items.reduce((sum, item) => sum + (item.quantity * item.price), 0),
+              total: saleTotal,
+              basePrice: saleBasePrice,
+              vatAmount: saleVatAmount,
               invoiceNumber: isAccredited ? `INV-${Date.now()}` : null,
-              dueDate: isAccredited ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null, // 30 days
+              dueDate: isAccredited ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null, // 30 days for accredited sales
               items: {
-                create: items.map(item => ({
+                create: calculatedItems.map(item => ({
                   productId: item.productId,
                   quantity: item.quantity,
                   price: item.price,
-                  discount: item.discount || 0
+                  discount: item.discount || 0,
+                  basePrice: item.basePrice,
+                  vatAmount: item.vatAmount
                 }))
               }
-            },
+            } as any,
             include: {
               customer: true,
               items: {
@@ -118,8 +138,8 @@ export default async function handler(
             }
           })
 
-          // Update stock levels
-          for (const item of items) {
+          // Update stock
+          for (const item of calculatedItems) {
             await tx.product.update({
               where: { id: item.productId },
               data: {

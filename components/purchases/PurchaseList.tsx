@@ -67,7 +67,7 @@ export default function PurchaseList() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Purchases</h2>
+        <h1 className="text-2xl font-bold">Purchases</h1>
         <Link
           href="/purchases/new"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"

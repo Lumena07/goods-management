@@ -7,6 +7,21 @@ export default function NewSupplierPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
+  const handleSubmit = async (data: any) => {
+    try {
+      const response = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        router.push('/suppliers')
+      }
+    } catch (error) {
+      console.error('Error creating supplier:', error)
+    }
+  }
+
   if (status === 'loading') {
     return <div>Loading...</div>
   }
@@ -20,7 +35,7 @@ export default function NewSupplierPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="mt-8">
-          <SupplierForm />
+          <SupplierForm onSubmit={handleSubmit} />
         </div>
       </div>
     </DashboardLayout>

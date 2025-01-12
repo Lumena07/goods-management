@@ -18,6 +18,9 @@ export default async function handler(
         const products = await prisma.product.findMany({
           orderBy: {
             name: 'asc'
+          },
+          include: {
+            customPrices: true
           }
         })
         return res.status(200).json(products)

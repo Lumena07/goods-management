@@ -12,6 +12,7 @@ interface Sale {
   id: string
   total: number
   isPaid: boolean
+  isAccredited: boolean
   createdAt: string
   items: Array<{
     quantity: number
@@ -64,14 +65,17 @@ export default function StatementView({ customerId, customerName, month }: State
           `/api/customers/${customerId}/statement?month=${selectedMonth}`
         )
         const data = await response.json()
-        setSales(data)
+        
+        // Filter out non-accredited sales
+        const accreditedSales = data.filter((sale: Sale) => sale.isAccredited)
+        setSales(accreditedSales)
         
         // Process sales and payments into chronological entries
         const entries: StatementEntry[] = []
         let runningBalance = 0
 
         // Combine sales and payments into a single array and sort by date
-        const allTransactions = data.flatMap((sale: Sale) => {
+        const allTransactions = accreditedSales.flatMap((sale: Sale) => {
           const transactions = [{
             type: 'SALE' as const,
             date: sale.createdAt,
