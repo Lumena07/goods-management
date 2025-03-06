@@ -13,7 +13,8 @@ const nextConfig = {
   assetPrefix: process.env.NODE_ENV === 'production' ? undefined : '',
   // Production optimizations
   experimental: {
-    optimizeCss: true,
+    // Disable problematic optimizations
+    optimizeCss: false,
     optimizeImages: true,
     serverActions: true,
   },
