@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "npm run build",
+    "vercel-build": "prisma generate && next build",
     "start": "next start",
-    "postinstall": "chmod +x ./node_modules/.bin/next",
+    "postinstall": "prisma generate && chmod +x ./node_modules/.bin/next",
     "lint": "next lint",
     "test": "jest",
     "test:api": "jest --config jest.config.api.js \"__tests__/api/.*\\.test\\.ts\"",
