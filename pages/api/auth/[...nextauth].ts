@@ -33,6 +33,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       id: 'credentials',
@@ -95,6 +96,7 @@ export const authOptions: NextAuthOptions = {
       return session
     }
   },
+  debug: process.env.NODE_ENV === 'development',
   events: {
     async signIn({ user }) {
       console.log('User signed in:', user.email)

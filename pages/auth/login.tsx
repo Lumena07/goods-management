@@ -22,6 +22,7 @@ export default function Login() {
         redirect: false,
         email,
         password,
+        callbackUrl: '/dashboard'
       });
 
       if (result?.error) {
@@ -34,7 +35,7 @@ export default function Login() {
         
         setError(errorMessage);
       } else if (result?.ok) {
-        router.push('/dashboard');
+        router.push(result.url || '/dashboard');
       }
     } catch (err) {
       console.error('Login error:', err);
