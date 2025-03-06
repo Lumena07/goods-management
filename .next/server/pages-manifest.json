@@ -1,1 +1,11 @@
-{}
+{
+  "/_app": "pages/_app.js",
+  "/_error": "pages/_error.js",
+  "/_document": "pages/_document.js",
+  "/": "pages/index.js",
+  "/dashboard": "pages/dashboard.js",
+  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js",
+  "/api/products/low-stock": "pages/api/products/low-stock.js",
+  "/api/activities/recent": "pages/api/activities/recent.js",
+  "/api/dashboard/metrics": "pages/api/dashboard/metrics.js"
+}
