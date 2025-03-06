@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": " npx prisma generate && npm run build",
+    "vercel-build": "rm -rf next && npx prisma generate && npm run build",
     "start": "next start",
     "postinstall": "chmod +x ./node_modules/.bin/prisma && chmod +x ./node_modules/.bin/next && npx prisma generate",
     "lint": "next lint",
