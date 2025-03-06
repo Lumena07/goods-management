@@ -2,10 +2,35 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 
-const Home = () => {
+export default function Home() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const [isLoading, setIsLoading] = useState(true)
+  const isLoading = status === 'loading'
+
+  console.log('Auth Status:', status)
+  console.log('Session:', session)
+  console.log('Is Loading:', isLoading)
+
+  if (!session && status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>Not Authenticated</p>
+          <p>Please sign in to continue</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          Loading...
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     const checkUsers = async () => {
@@ -22,27 +47,13 @@ const Home = () => {
         }
       } catch (err) {
         console.error('Failed to check users:', err)
-      } finally {
-        setIsLoading(false)
       }
     }
 
-    if (status !== 'loading') {
+    if (status === 'authenticated' || status === 'unauthenticated') {
       checkUsers()
     }
   }, [router, session, status])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          Loading...
-        </div>
-      </div>
-    )
-  }
-
   return null
-}
-
-export default Home 
+} 
