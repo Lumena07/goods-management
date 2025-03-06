@@ -1,174 +1,78 @@
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { useSession, getSession } from 'next-auth/react'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 // Add getServerSideProps to pre-fetch session
 export async function getServerSideProps(context: any) {
+  // Check for existing users first
+  const userCount = await prisma.user.count()
   const session = await getSession(context)
-  console.log('Server-side session:', !!session)
+  
+  console.log('Server-side props:', {
+    hasSession: !!session,
+    userCount
+  })
+
+  // If no users exist, redirect to signup
+  if (userCount === 0) {
+    return {
+      redirect: {
+        destination: '/auth/signup',
+        permanent: false,
+      },
+    }
+  }
+
+  // If user is authenticated, redirect to dashboard
+  if (session) {
+    return {
+      redirect: {
+        destination: '/dashboard',
+        permanent: false,
+      },
+    }
+  }
+
+  // Otherwise, return props for login page
   return {
     props: {
-      session
+      session,
+      userCount,
     }
   }
 }
 
-export default function Home() {
+export default function Home({ userCount }: { userCount: number }) {
   const router = useRouter()
-  const { data: session, status } = useSession({
-    required: false,
-    onUnauthenticated() {
-      console.log('Session is unauthenticated')
-    },
-  })
-  const [isChecking, setIsChecking] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [initAttempts, setInitAttempts] = useState(0)
-
-  console.log('=== Auth Debug Info ===')
-  console.log('Current Status:', status)
-  console.log('Session Data:', session)
-  console.log('Router Path:', router.pathname)
-  console.log('Router Query:', router.query)
-  console.log('Is Checking Users:', isChecking)
-  console.log('Error State:', error)
-  console.log('Init Attempts:', initAttempts)
-  console.log('Window URL:', typeof window !== 'undefined' ? window.location.href : 'SSR')
-  console.log('=====================')
-
-  // Debug session endpoint
-  useEffect(() => {
-    const checkSessionEndpoint = async () => {
-      try {
-        // Use absolute URL to avoid any path resolution issues
-        const baseUrl = window.location.origin
-        const res = await fetch(`${baseUrl}/api/auth/session`, {
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-          },
-        })
-        console.log('Session Endpoint Status:', res.status)
-        const data = await res.json()
-        console.log('Session Endpoint Data:', data)
-
-        // If we get a response but status is still loading, force a status update
-        if (status === 'loading' && initAttempts >= 2) {
-          console.log('Forcing status update due to loading timeout')
-          router.push('/auth/login')
-        }
-      } catch (err) {
-        console.error('Session Endpoint Error:', err)
-      }
-    }
-
-    if (status === 'loading' && initAttempts < 3) {
-      console.log('Checking session endpoint...')
-      checkSessionEndpoint()
-      setInitAttempts(prev => prev + 1)
-    }
-  }, [status, initAttempts, router])
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    let isMounted = true
-    console.log('Effect triggered with status:', status)
-    
-    const checkUsers = async () => {
-      if (isChecking || !isMounted) return
-      setIsChecking(true)
-      setError(null)
-      console.log('Checking users...')
-      
-      try {
-        const res = await fetch('/api/users/count')
-        console.log('API Response Status:', res.status)
-        
-        if (!res.ok) {
-          throw new Error(`API returned status: ${res.status}`)
-        }
-        
-        const data = await res.json()
-        console.log('Users Count Data:', data)
-        
-        if (!isMounted) return
-
-        if (data.count === 0) {
-          console.log('No users found, redirecting to signup')
-          await router.push('/auth/signup')
-        } else if (session) {
-          console.log('Session found, redirecting to dashboard')
-          await router.push('/dashboard')
-        } else if (status === 'unauthenticated') {
-          console.log('No session, redirecting to login')
-          await router.push('/auth/login')
-        }
-      } catch (err) {
-        console.error('API Error:', err)
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to check user status')
-        }
-      } finally {
-        if (isMounted) {
-          setIsChecking(false)
-        }
-      }
-    }
-
-    // Only proceed if we have a definitive session status
-    if (status !== 'loading') {
-      checkUsers()
-    } else if (initAttempts >= 3) {
-      console.log('Session initialization timeout, proceeding as unauthenticated')
+    if (status === 'unauthenticated') {
+      console.log('Redirecting to login page...')
       router.push('/auth/login')
-    } else {
-      console.log('Waiting for auth status to resolve...')
     }
+  }, [status, router])
 
-    return () => {
-      isMounted = false
-    }
-  }, [router, session, status, isChecking, initAttempts])
-
-  if (status === 'loading' && initAttempts < 3) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8 rounded-lg shadow-lg bg-white">
-          <div className="mb-4 text-xl font-semibold">
-            Initializing Session...
-          </div>
-          <div className="text-sm text-gray-600 mb-2">
-            Attempt: {initAttempts + 1} of 3
-          </div>
-          <div className="text-xs text-gray-400">
-            Please wait while we set up your session
-          </div>
-        </div>
-      </div>
-    )
-  }
-
+  // Show a simple loading state
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center p-8 rounded-lg shadow-lg bg-white">
-        <div className="mb-4 text-xl font-semibold">
-          {status === 'loading' ? 'Checking authentication...' : 'Initializing application...'}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center p-8 rounded-lg shadow-lg bg-white max-w-md w-full mx-4">
+        <div className="mb-4 text-xl font-semibold text-gray-800">
+          Welcome to Goods Management System
         </div>
-        <div className="text-sm text-gray-600 mb-2">
-          Status: <span className="font-medium">{status}</span>
+        <div className="text-sm text-gray-600 mb-4">
+          {status === 'loading' ? (
+            'Checking authentication...'
+          ) : (
+            'Redirecting to login page...'
+          )}
         </div>
-        <div className="text-sm text-gray-600">
-          Session: <span className="font-medium">{session ? 'Active' : 'Not Active'}</span>
+        <div className="animate-pulse">
+          <div className="h-2 bg-gray-200 rounded w-3/4 mx-auto"></div>
         </div>
-        {isChecking && (
-          <div className="mt-4 text-sm text-blue-600">
-            Checking user status...
-          </div>
-        )}
-        {error && (
-          <div className="mt-4 text-sm text-red-600">
-            Error: {error}
-          </div>
-        )}
       </div>
     </div>
   )

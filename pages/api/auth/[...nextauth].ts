@@ -34,8 +34,14 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  pages: {
+    signIn: '/auth/login',
+    error: '/auth/error',
+    signOut: '/auth/login',
+  },
   providers: [
     CredentialsProvider({
+      id: 'credentials',
       name: 'Credentials',
       credentials: {
         email: { label: "Email", type: "email" },
@@ -87,20 +93,12 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async signIn({ user, account, profile, email, credentials }) {
-      try {
-        console.log('SignIn Callback:', { 
-          userExists: !!user,
-          accountExists: !!account,
-          profileExists: !!profile,
-          emailExists: !!email,
-          credentialsExist: !!credentials
-        })
-        return true
-      } catch (error) {
-        console.error('SignIn Callback Error:', error)
+    async signIn({ user, account }) {
+      // Only allow credentials provider
+      if (account?.provider !== 'credentials') {
         return false
       }
+      return true
     },
     async jwt({ token, user }) {
       try {
@@ -139,10 +137,6 @@ export const authOptions: NextAuthOptions = {
     async signIn(message) { console.log('SignIn Event:', message) },
     async signOut(message) { console.log('SignOut Event:', message) },
     async session(message) { console.log('Session Event:', message) }
-  },
-  pages: {
-    signIn: '/auth/login',
-    error: '/auth/error',
   }
 }
 
