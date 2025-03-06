@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import ProductForm from '@/components/ProductForm'
-import DashboardLayout from '@/components/DashboardLayout'
+import ProductForm from '@/components/products/ProductForm'
+import DashboardLayout from '@/components/layout/DashboardLayout'
 
 export default function EditProductPage() {
   const { data: session, status } = useSession()
