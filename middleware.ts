@@ -1,6 +1,7 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import type { JWT } from "next-auth/jwt";
 
 // Debug function to safely stringify objects
 function safeStringify(obj: any) {
@@ -15,17 +16,16 @@ function safeStringify(obj: any) {
 }
 
 export default withAuth(
-  function middleware(req: NextRequest) {
-    const token = req.nextauth.token;
-    const path = req.nextUrl.pathname;
-
+  function middleware(req) {
     // Debug logging
     console.log('=== Middleware Debug ===');
-    console.log('Path:', path);
-    console.log('Token exists:', !!token);
-    console.log('Token role:', token?.role);
+    console.log('Path:', req.nextUrl.pathname);
+    console.log('Token:', req.nextauth?.token ? 'exists' : 'not found');
     console.log('Headers:', safeStringify(Object.fromEntries(req.headers)));
     console.log('=====================');
+
+    const token = req.nextauth?.token as JWT | null;
+    const path = req.nextUrl.pathname;
 
     // Admin-only routes
     if ((path.startsWith("/admin") || path.startsWith("/products")) && 
