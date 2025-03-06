@@ -1,6 +1,17 @@
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, getSession } from 'next-auth/react'
+
+// Add getServerSideProps to pre-fetch session
+export async function getServerSideProps(context: any) {
+  const session = await getSession(context)
+  console.log('Server-side session:', !!session)
+  return {
+    props: {
+      session
+    }
+  }
+}
 
 export default function Home() {
   const router = useRouter()
@@ -32,7 +43,7 @@ export default function Home() {
         // Use absolute URL to avoid any path resolution issues
         const baseUrl = window.location.origin
         const res = await fetch(`${baseUrl}/api/auth/session`, {
-          credentials: 'include', // Important for cookies
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
           },
@@ -40,6 +51,12 @@ export default function Home() {
         console.log('Session Endpoint Status:', res.status)
         const data = await res.json()
         console.log('Session Endpoint Data:', data)
+
+        // If we get a response but status is still loading, force a status update
+        if (status === 'loading' && initAttempts >= 2) {
+          console.log('Forcing status update due to loading timeout')
+          router.push('/auth/login')
+        }
       } catch (err) {
         console.error('Session Endpoint Error:', err)
       }
@@ -50,7 +67,7 @@ export default function Home() {
       checkSessionEndpoint()
       setInitAttempts(prev => prev + 1)
     }
-  }, [status, initAttempts])
+  }, [status, initAttempts, router])
 
   useEffect(() => {
     let isMounted = true

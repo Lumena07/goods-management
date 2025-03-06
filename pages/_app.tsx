@@ -6,8 +6,8 @@ import { useEffect } from 'react'
 function AuthDebug({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('=== NextAuth Debug ===')
-    console.log('Window Location:', window.location.href)
-    console.log('Base URL:', window.location.origin)
+    console.log('Window Location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
+    console.log('Base URL:', typeof window !== 'undefined' ? window.location.origin : 'SSR')
     console.log('=====================')
   }, [])
 
@@ -26,11 +26,18 @@ function LoadingFallback() {
 }
 
 export default function App({ Component, pageProps }: AppProps) {
+  // Log initial props for debugging
+  console.log('App Props:', {
+    hasSession: !!pageProps.session,
+    keys: Object.keys(pageProps)
+  })
+
   return (
-    <SessionProvider 
+    <SessionProvider
       session={pageProps.session}
-      refetchInterval={0} 
+      refetchInterval={0}
       refetchOnWindowFocus={false}
+      refetchWhenOffline={false}
     >
       <AuthDebug>
         <Component {...pageProps} />
