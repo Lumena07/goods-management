@@ -22,13 +22,21 @@ export default function Home() {
   console.log('Is Checking Users:', isChecking)
   console.log('Error State:', error)
   console.log('Init Attempts:', initAttempts)
+  console.log('Window URL:', typeof window !== 'undefined' ? window.location.href : 'SSR')
   console.log('=====================')
 
   // Debug session endpoint
   useEffect(() => {
     const checkSessionEndpoint = async () => {
       try {
-        const res = await fetch('/api/auth/session')
+        // Use absolute URL to avoid any path resolution issues
+        const baseUrl = window.location.origin
+        const res = await fetch(`${baseUrl}/api/auth/session`, {
+          credentials: 'include', // Important for cookies
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
         console.log('Session Endpoint Status:', res.status)
         const data = await res.json()
         console.log('Session Endpoint Data:', data)
