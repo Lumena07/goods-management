@@ -26,7 +26,8 @@ interface InvoiceProps {
     address: string
     phone: string
     email: string
-    website?: string
+    tin: string
+    vrn: string
   }
 }
 
@@ -63,7 +64,8 @@ export default function Invoice({ sale, companyInfo }: InvoiceProps) {
               <p>{companyInfo.address}</p>
               <p>Phone: {companyInfo.phone}</p>
               <p>Email: {companyInfo.email}</p>
-              {companyInfo.website && <p>Website: {companyInfo.website}</p>}
+              <p>TIN: {companyInfo.tin}</p>
+              <p>VRN: {companyInfo.vrn}</p>
             </div>
           </div>
           <div className="text-right">

@@ -42,6 +42,21 @@ export default function EditProductPage() {
     }
   }, [id])
 
+  const handleSubmit = async (data: any) => {
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        router.push('/products')
+      }
+    } catch (error) {
+      setError('Failed to update product')
+    }
+  }
+
   if (status === 'loading' || loading) {
     return <div>Loading...</div>
   }
@@ -64,7 +79,7 @@ export default function EditProductPage() {
           </div>
         </div>
         <div className="mt-8">
-          {product && <ProductForm product={product} />}
+          {product && <ProductForm product={product} onSubmit={handleSubmit} />}
         </div>
       </div>
     </DashboardLayout>

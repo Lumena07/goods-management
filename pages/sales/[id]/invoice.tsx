@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Invoice from '@/components/sales/Invoice'
+import { companyInfo } from '@/config/company'
 
 interface SaleInvoice {
   id: string
@@ -25,15 +26,6 @@ interface SaleInvoice {
   total: number
   basePrice: number
   vatAmount: number
-}
-
-// You should move this to an environment variable or configuration file
-const companyInfo = {
-  name: "Your Company Name",
-  address: "123 Business Street, Dar es Salaam, Tanzania",
-  phone: "+255 123 456 789",
-  email: "contact@company.com",
-  website: "www.company.com"
 }
 
 const InvoicePage: NextPage = () => {
