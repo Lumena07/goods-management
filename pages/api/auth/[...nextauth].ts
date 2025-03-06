@@ -6,13 +6,20 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 console.log('Initializing NextAuth configuration')
+console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+console.log('NODE_ENV:', process.env.NODE_ENV)
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('Please provide NEXTAUTH_SECRET environment variable')
 }
 
+if (!process.env.NEXTAUTH_URL && process.env.NODE_ENV === 'production') {
+  console.warn('Warning: NEXTAUTH_URL is not set in production environment')
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  debug: true,
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
@@ -44,6 +51,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!user.isApproved) {
+            console.log('User not approved:', credentials.email)
             throw new Error('Account is pending approval')
           }
 
@@ -70,20 +78,44 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
+    async signIn({ user, account, profile, email, credentials }) {
+      console.log('SignIn Callback:', { 
+        userExists: !!user,
+        accountExists: !!account,
+        profileExists: !!profile,
+        emailExists: !!email,
+        credentialsExist: !!credentials
+      })
+      return true
+    },
     async jwt({ token, user }) {
-      console.log('JWT Callback:', { tokenExists: !!token, userExists: !!user })
+      console.log('JWT Callback:', { 
+        tokenExists: !!token,
+        userExists: !!user,
+        tokenContent: token
+      })
       if (user) {
         token.role = user.role
       }
       return token
     },
     async session({ session, token }) {
-      console.log('Session Callback:', { sessionExists: !!session, tokenExists: !!token })
+      console.log('Session Callback:', { 
+        sessionExists: !!session,
+        tokenExists: !!token,
+        sessionContent: session
+      })
       if (token && session.user) {
         session.user.role = token.role
       }
       return session
     }
+  },
+  events: {
+    async signIn(message) { console.log('SignIn Event:', message) },
+    async signOut(message) { console.log('SignOut Event:', message) },
+    async session(message) { console.log('Session Event:', message) },
+    async error(message) { console.error('Auth Error Event:', message) }
   },
   pages: {
     signIn: '/auth/login',
