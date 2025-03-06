@@ -1,13 +1,13 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 
 // Prevent multiple instances of Prisma Client in development
 declare global {
   var prisma: PrismaClient | undefined
 }
 
-const prismaClientOptions = {
+const prismaClientOptions: Prisma.PrismaClientOptions = {
   log: ['error', 'warn'],
-  errorFormat: 'pretty',
+  errorFormat: 'pretty' as const,
   datasources: process.env.DATABASE_URL
     ? { db: { url: process.env.DATABASE_URL } }
     : undefined,
