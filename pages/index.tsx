@@ -56,4 +56,4 @@ export default function Home() {
   }, [router, session, status])
 
   return null
-} 
+}
