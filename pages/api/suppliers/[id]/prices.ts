@@ -69,8 +69,4 @@ export default async function handler(
 
   res.setHeader('Allow', ['GET', 'POST'])
   return res.status(405).json({ message: `Method ${req.method} Not Allowed` })
-<<<<<<< HEAD
-} 
-=======
 }
->>>>>>> 6a46d5d05f1906e42fd540299037da5852da619a
