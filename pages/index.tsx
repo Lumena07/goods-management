@@ -4,9 +4,15 @@ import { useSession } from 'next-auth/react'
 
 export default function Home() {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession({
+    required: false,
+    onUnauthenticated() {
+      console.log('Session is unauthenticated')
+    },
+  })
   const [isChecking, setIsChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [initAttempts, setInitAttempts] = useState(0)
 
   console.log('=== Auth Debug Info ===')
   console.log('Current Status:', status)
@@ -15,7 +21,28 @@ export default function Home() {
   console.log('Router Query:', router.query)
   console.log('Is Checking Users:', isChecking)
   console.log('Error State:', error)
+  console.log('Init Attempts:', initAttempts)
   console.log('=====================')
+
+  // Debug session endpoint
+  useEffect(() => {
+    const checkSessionEndpoint = async () => {
+      try {
+        const res = await fetch('/api/auth/session')
+        console.log('Session Endpoint Status:', res.status)
+        const data = await res.json()
+        console.log('Session Endpoint Data:', data)
+      } catch (err) {
+        console.error('Session Endpoint Error:', err)
+      }
+    }
+
+    if (status === 'loading' && initAttempts < 3) {
+      console.log('Checking session endpoint...')
+      checkSessionEndpoint()
+      setInitAttempts(prev => prev + 1)
+    }
+  }, [status, initAttempts])
 
   useEffect(() => {
     let isMounted = true
@@ -62,8 +89,12 @@ export default function Home() {
       }
     }
 
+    // Only proceed if we have a definitive session status
     if (status !== 'loading') {
       checkUsers()
+    } else if (initAttempts >= 3) {
+      console.log('Session initialization timeout, proceeding as unauthenticated')
+      router.push('/auth/login')
     } else {
       console.log('Waiting for auth status to resolve...')
     }
@@ -71,7 +102,25 @@ export default function Home() {
     return () => {
       isMounted = false
     }
-  }, [router, session, status, isChecking])
+  }, [router, session, status, isChecking, initAttempts])
+
+  if (status === 'loading' && initAttempts < 3) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8 rounded-lg shadow-lg bg-white">
+          <div className="mb-4 text-xl font-semibold">
+            Initializing Session...
+          </div>
+          <div className="text-sm text-gray-600 mb-2">
+            Attempt: {initAttempts + 1} of 3
+          </div>
+          <div className="text-xs text-gray-400">
+            Please wait while we set up your session
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center">
