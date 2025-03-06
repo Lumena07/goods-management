@@ -5,10 +5,15 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
+// In production, force the use of VERCEL_URL
+if (process.env.NODE_ENV === 'production' && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`
+}
+
 console.log('=== NextAuth Configuration ===')
-console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
 console.log('NODE_ENV:', process.env.NODE_ENV)
 console.log('VERCEL_URL:', process.env.VERCEL_URL || 'not set')
+console.log('Effective URL:', process.env.NEXTAUTH_URL)
 console.log('============================')
 
 // Validate environment
@@ -16,14 +21,9 @@ if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('Please provide NEXTAUTH_SECRET environment variable')
 }
 
-// In production, use VERCEL_URL if available, otherwise require NEXTAUTH_URL
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.NEXTAUTH_URL && !process.env.VERCEL_URL) {
-    throw new Error('Please provide either VERCEL_URL or NEXTAUTH_URL in production')
-  }
-  if (process.env.NEXTAUTH_URL?.includes('localhost')) {
-    throw new Error('NEXTAUTH_URL cannot be set to localhost in production')
-  }
+// Ensure we have a valid URL in production
+if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL) {
+  throw new Error('No valid URL configuration found for production environment')
 }
 
 export const authOptions: NextAuthOptions = {
