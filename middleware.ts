@@ -1,7 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import type { JWT } from "next-auth/jwt";
 
 // Debug function to safely stringify objects
 function safeStringify(obj: any) {
@@ -17,47 +16,51 @@ function safeStringify(obj: any) {
 
 export default withAuth(
   function middleware(req: NextRequest) {
+    const path = req.nextUrl.pathname;
+    
     // Debug logging
     console.log('=== Middleware Debug ===');
-    console.log('Path:', req.nextUrl.pathname);
-    console.log('Token:', req.nextauth?.token ? 'exists' : 'not found');
+    console.log('Path:', path);
     console.log('Headers:', safeStringify(Object.fromEntries(req.headers)));
     console.log('=====================');
-
-    const token = req.nextauth?.token as JWT | null;
-    const path = req.nextUrl.pathname;
-
-    // Admin-only routes
-    if ((path.startsWith("/admin") || path.startsWith("/products")) && 
-        token?.role !== "ADMIN") {
-      console.log('Unauthorized: Admin access required');
-      return NextResponse.redirect(new URL("/unauthorized", req.url));
-    }
-
-    // Sales clerk and admin routes
-    if ((path.startsWith("/sales") || path.startsWith("/customers")) && 
-        !["ADMIN", "SALES_CLERK"].includes(token?.role || "")) {
-      console.log('Unauthorized: Sales clerk or admin access required');
-      return NextResponse.redirect(new URL("/unauthorized", req.url));
-    }
-
-    // Inventory manager and admin routes
-    if (path.startsWith("/purchases") && 
-        !["ADMIN", "INVENTORY_MANAGER"].includes(token?.role || "")) {
-      console.log('Unauthorized: Inventory manager or admin access required');
-      return NextResponse.redirect(new URL("/unauthorized", req.url));
-    }
-
-    // If the user is authenticated and trying to access auth pages, redirect to dashboard
-    if (path.startsWith("/auth/")) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
 
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token
+      authorized({ token, req }) {
+        const path = req.nextUrl.pathname;
+        
+        // Allow access to auth pages
+        if (path.startsWith('/auth/')) {
+          return true;
+        }
+
+        // Require authentication for all other pages
+        if (!token) {
+          return false;
+        }
+
+        // Admin-only routes
+        if ((path.startsWith("/admin") || path.startsWith("/products")) && 
+            token.role !== "ADMIN") {
+          return false;
+        }
+
+        // Sales clerk and admin routes
+        if ((path.startsWith("/sales") || path.startsWith("/customers")) && 
+            !["ADMIN", "SALES_CLERK"].includes(token.role as string)) {
+          return false;
+        }
+
+        // Inventory manager and admin routes
+        if (path.startsWith("/purchases") && 
+            !["ADMIN", "INVENTORY_MANAGER"].includes(token.role as string)) {
+          return false;
+        }
+
+        return true;
+      }
     },
     pages: {
       signIn: "/auth/login",
@@ -73,9 +76,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - auth/login (login page)
-     * - auth/signup (signup page)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|auth/login|auth/signup).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
   ],
 }; 
