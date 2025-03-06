@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs'
 console.log('=== NextAuth Configuration ===')
 console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
 console.log('NODE_ENV:', process.env.NODE_ENV)
-console.log('Base URL:', process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NEXTAUTH_URL)
+console.log('VERCEL_URL:', process.env.VERCEL_URL || 'not set')
 console.log('============================')
 
 // Validate environment
@@ -17,16 +17,13 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 // In production, use VERCEL_URL if available, otherwise require NEXTAUTH_URL
-const baseUrl = process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}`
-  : process.env.NEXTAUTH_URL
-
-if (process.env.NODE_ENV === 'production' && !baseUrl) {
-  throw new Error('Please provide either VERCEL_URL or NEXTAUTH_URL in production')
-}
-
-if (process.env.NODE_ENV === 'production' && process.env.NEXTAUTH_URL?.includes('localhost')) {
-  throw new Error('NEXTAUTH_URL cannot be set to localhost in production')
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.NEXTAUTH_URL && !process.env.VERCEL_URL) {
+    throw new Error('Please provide either VERCEL_URL or NEXTAUTH_URL in production')
+  }
+  if (process.env.NEXTAUTH_URL?.includes('localhost')) {
+    throw new Error('NEXTAUTH_URL cannot be set to localhost in production')
+  }
 }
 
 export const authOptions: NextAuthOptions = {
@@ -37,8 +34,6 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  // Use the correct base URL
-  url: baseUrl,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
