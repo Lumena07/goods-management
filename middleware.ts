@@ -14,6 +14,9 @@ function safeStringify(obj: any) {
   }
 }
 
+// Define public routes that don't require authentication
+const publicRoutes = ['/auth/login', '/auth/register', '/auth/forgot-password'];
+
 export default withAuth(
   function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
@@ -24,6 +27,11 @@ export default withAuth(
     console.log('Headers:', safeStringify(Object.fromEntries(req.headers)));
     console.log('=====================');
 
+    // Handle root path redirect to login
+    if (path === '/') {
+      return NextResponse.redirect(new URL('/auth/login', req.url));
+    }
+
     return NextResponse.next();
   },
   {
@@ -31,13 +39,8 @@ export default withAuth(
       authorized({ token, req }) {
         const path = req.nextUrl.pathname;
         
-        // Always allow access to login page
-        if (path === '/auth/login') {
-          return true;
-        }
-
-        // Allow access to other auth-related pages
-        if (path.startsWith('/auth/') && path !== '/auth/login') {
+        // Allow access to public routes
+        if (publicRoutes.includes(path)) {
           return true;
         }
 
