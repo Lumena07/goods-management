@@ -79,43 +79,57 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile, email, credentials }) {
-      console.log('SignIn Callback:', { 
-        userExists: !!user,
-        accountExists: !!account,
-        profileExists: !!profile,
-        emailExists: !!email,
-        credentialsExist: !!credentials
-      })
-      return true
+      try {
+        console.log('SignIn Callback:', { 
+          userExists: !!user,
+          accountExists: !!account,
+          profileExists: !!profile,
+          emailExists: !!email,
+          credentialsExist: !!credentials
+        })
+        return true
+      } catch (error) {
+        console.error('SignIn Callback Error:', error)
+        return false
+      }
     },
     async jwt({ token, user }) {
-      console.log('JWT Callback:', { 
-        tokenExists: !!token,
-        userExists: !!user,
-        tokenContent: token
-      })
-      if (user) {
-        token.role = user.role
+      try {
+        console.log('JWT Callback:', { 
+          tokenExists: !!token,
+          userExists: !!user,
+          tokenContent: token
+        })
+        if (user) {
+          token.role = user.role
+        }
+        return token
+      } catch (error) {
+        console.error('JWT Callback Error:', error)
+        return token
       }
-      return token
     },
     async session({ session, token }) {
-      console.log('Session Callback:', { 
-        sessionExists: !!session,
-        tokenExists: !!token,
-        sessionContent: session
-      })
-      if (token && session.user) {
-        session.user.role = token.role
+      try {
+        console.log('Session Callback:', { 
+          sessionExists: !!session,
+          tokenExists: !!token,
+          sessionContent: session
+        })
+        if (token && session.user) {
+          session.user.role = token.role
+        }
+        return session
+      } catch (error) {
+        console.error('Session Callback Error:', error)
+        return session
       }
-      return session
     }
   },
   events: {
     async signIn(message) { console.log('SignIn Event:', message) },
     async signOut(message) { console.log('SignOut Event:', message) },
-    async session(message) { console.log('Session Event:', message) },
-    async error(message) { console.error('Auth Error Event:', message) }
+    async session(message) { console.log('Session Event:', message) }
   },
   pages: {
     signIn: '/auth/login',
