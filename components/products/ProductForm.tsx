@@ -37,7 +37,6 @@ export default function ProductForm({ product, onSubmit }: ProductFormProps) {
 
     try {
       await onSubmit({
-        id: product?.id || '', // Ensure id is passed for updates
         name: formData.name,
         basePrice: Number(formData.basePrice),
         minStock: Number(formData.minStock),
@@ -141,4 +140,4 @@ export default function ProductForm({ product, onSubmit }: ProductFormProps) {
       </div>
     </form>
   )
-}
+} 
