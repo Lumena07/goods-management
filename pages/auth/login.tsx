@@ -1,27 +1,14 @@
-import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
 export default function Login() {
   const router = useRouter();
-  const { data: session } = useSession({ required: false });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // Handle session change
-  useEffect(() => {
-    if (session) {
-      router.replace('/dashboard');
-    }
-  }, [session, router]);
-
-  // Clear error when inputs change
-  useEffect(() => {
-    if (error) setError(null);
-  }, [email, password]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -46,8 +33,9 @@ export default function Login() {
         }[result.error] || 'An error occurred during sign in. Please try again.';
         
         setError(errorMessage);
+      } else if (result?.ok) {
+        router.push('/dashboard');
       }
-      // No need for else block - useEffect will handle redirect on successful login
     } catch (err) {
       console.error('Login error:', err);
       setError('Unable to connect to the server. Please try again later.');
