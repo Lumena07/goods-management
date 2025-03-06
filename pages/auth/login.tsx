@@ -11,12 +11,24 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // If user is already authenticated, redirect to dashboard
+  // Debug logs
+  useEffect(() => {
+    console.log('Login Page State:', {
+      status,
+      hasSession: !!session,
+      currentPath: router.pathname,
+      query: router.query
+    });
+  }, [status, session, router]);
+
+  // Remove the automatic redirect for now
+  /*
   useEffect(() => {
     if (session) {
       router.replace('/dashboard');
     }
   }, [session, router]);
+  */
 
   // Clear error when inputs change
   useEffect(() => {
@@ -31,11 +43,15 @@ export default function Login() {
     setLoading(true);
 
     try {
+      console.log('Attempting sign in with:', { email });
+      
       const result = await signIn('credentials', {
         redirect: false,
         email,
         password,
       });
+
+      console.log('Sign in result:', result);
 
       if (result?.error) {
         // Map backend errors to user-friendly messages
@@ -48,8 +64,8 @@ export default function Login() {
         
         setError(errorMessage);
       } else if (result?.ok) {
-        // Successful login
-        router.push('/dashboard');
+        // Successful login - use window.location for a full page reload
+        window.location.href = '/dashboard';
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -65,7 +81,24 @@ export default function Login() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <p className="mt-4 text-gray-600">Checking authentication status: {status}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If already authenticated, show message instead of redirecting
+  if (session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">You are already signed in.</p>
+          <button
+            onClick={() => window.location.href = '/dashboard'}
+            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Go to Dashboard
+          </button>
         </div>
       </div>
     );
