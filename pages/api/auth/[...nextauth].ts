@@ -5,30 +5,37 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
-// In production, force the use of VERCEL_URL
-if (process.env.NODE_ENV === 'production' && process.env.VERCEL_URL) {
-  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`
-}
-
+// Log environment details
 console.log('=== NextAuth Configuration ===')
 console.log('NODE_ENV:', process.env.NODE_ENV)
 console.log('VERCEL_URL:', process.env.VERCEL_URL || 'not set')
-console.log('Effective URL:', process.env.NEXTAUTH_URL)
+console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+console.log('Database URL:', process.env.DATABASE_URL ? 'Set' : 'Not set')
 console.log('============================')
 
-// Validate environment
-if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error('Please provide NEXTAUTH_SECRET environment variable')
+// Validate critical environment variables
+const requiredEnvVars = ['DATABASE_URL', 'NEXTAUTH_SECRET']
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar])
+
+if (missingEnvVars.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`)
 }
 
-// Ensure we have a valid URL in production
-if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL) {
-  throw new Error('No valid URL configuration found for production environment')
+// In production, use VERCEL_URL if NEXTAUTH_URL is not set
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+    process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`
+    console.log('Using VERCEL_URL as NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+  }
+  
+  if (!process.env.NEXTAUTH_URL) {
+    throw new Error('NEXTAUTH_URL must be set in production')
+  }
 }
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  debug: true,
+  debug: process.env.NODE_ENV !== 'production',
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
@@ -48,7 +55,8 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log('Attempting authorization...')
+        console.log('Attempting authorization for:', credentials?.email)
+        
         if (!credentials?.email || !credentials?.password) {
           console.log('Missing credentials')
           return null
@@ -58,8 +66,7 @@ export const authOptions: NextAuthOptions = {
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           })
-          console.log('User lookup result:', user ? 'Found' : 'Not Found')
-
+          
           if (!user) {
             console.log('No user found with email:', credentials.email)
             return null
@@ -71,14 +78,14 @@ export const authOptions: NextAuthOptions = {
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password)
-          console.log('Password validation:', isValid ? 'Valid' : 'Invalid')
+          console.log('Password validation result:', isValid)
 
           if (!isValid) {
-            console.log('Invalid password')
+            console.log('Invalid password for user:', credentials.email)
             return null
           }
 
-          console.log('Authorization successful')
+          console.log('Authorization successful for:', credentials.email)
           return {
             id: user.id,
             email: user.email,
@@ -87,25 +94,35 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Authorization error:', error)
-          return null
+          throw error // Let NextAuth handle the error
         }
       }
     })
   ],
   callbacks: {
     async signIn({ user, account }) {
-      // Only allow credentials provider
-      if (account?.provider !== 'credentials') {
+      try {
+        console.log('SignIn Callback:', { 
+          user: user?.email,
+          provider: account?.provider
+        })
+        
+        // Only allow credentials provider
+        if (account?.provider !== 'credentials') {
+          console.log('Rejected non-credentials provider:', account?.provider)
+          return false
+        }
+        return true
+      } catch (error) {
+        console.error('SignIn Callback Error:', error)
         return false
       }
-      return true
     },
     async jwt({ token, user }) {
       try {
         console.log('JWT Callback:', { 
           tokenExists: !!token,
-          userExists: !!user,
-          tokenContent: token
+          userEmail: user?.email
         })
         if (user) {
           token.role = user.role
@@ -120,8 +137,7 @@ export const authOptions: NextAuthOptions = {
       try {
         console.log('Session Callback:', { 
           sessionExists: !!session,
-          tokenExists: !!token,
-          sessionContent: session
+          userEmail: session?.user?.email
         })
         if (token && session.user) {
           session.user.role = token.role
@@ -134,9 +150,22 @@ export const authOptions: NextAuthOptions = {
     }
   },
   events: {
-    async signIn(message) { console.log('SignIn Event:', message) },
-    async signOut(message) { console.log('SignOut Event:', message) },
-    async session(message) { console.log('Session Event:', message) }
+    async signIn(message) { 
+      console.log('SignIn Event:', {
+        user: message.user.email,
+        isNewUser: message.isNewUser
+      })
+    },
+    async signOut(message) { 
+      console.log('SignOut Event:', {
+        session: message.session
+      })
+    },
+    async session(message) { 
+      console.log('Session Event:', {
+        session: message.session
+      })
+    }
   }
 }
 
