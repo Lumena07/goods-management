@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,30 +12,34 @@ export default async function handler(
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`
-    
-    // Return health status
-    res.status(200).json({
+
+    // Get counts from all tables
+    const counts = {
+      users: await prisma.user.count(),
+      suppliers: await prisma.supplier.count(),
+      customers: await prisma.customer.count(),
+      products: await prisma.product.count(),
+      purchases: await prisma.purchase.count(),
+      purchaseItems: await prisma.purchaseItem.count(),
+      sales: await prisma.sale.count(),
+      saleItems: await prisma.saleItem.count(),
+    }
+
+    return res.status(200).json({
       status: 'healthy',
       database: 'connected',
-      timestamp: new Date().toISOString(),
-      env: {
-        node_env: process.env.NODE_ENV,
-        has_database_url: !!process.env.DATABASE_URL,
-        database_host: process.env.DATABASE_URL?.split('@')[1]?.split(':')[0] || 'unknown'
-      }
+      environment: process.env.NODE_ENV,
+      counts,
+      timestamp: new Date().toISOString()
     })
   } catch (error) {
     console.error('Health check failed:', error)
-    res.status(500).json({
+    return res.status(500).json({
       status: 'unhealthy',
       database: 'disconnected',
+      environment: process.env.NODE_ENV,
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString(),
-      env: {
-        node_env: process.env.NODE_ENV,
-        has_database_url: !!process.env.DATABASE_URL,
-        database_host: process.env.DATABASE_URL?.split('@')[1]?.split(':')[0] || 'unknown'
-      }
+      timestamp: new Date().toISOString()
     })
   }
 } 
