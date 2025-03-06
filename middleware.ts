@@ -31,8 +31,13 @@ export default withAuth(
       authorized({ token, req }) {
         const path = req.nextUrl.pathname;
         
-        // Allow access to auth pages
-        if (path.startsWith('/auth/')) {
+        // Always allow access to login page
+        if (path === '/auth/login') {
+          return true;
+        }
+
+        // Allow access to other auth-related pages
+        if (path.startsWith('/auth/') && path !== '/auth/login') {
           return true;
         }
 
@@ -76,7 +81,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public files
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*|$).*)",
   ],
 }; 
