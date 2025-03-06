@@ -22,11 +22,16 @@ interface Purchase {
   items: PurchaseItem[]
 }
 
+interface ReceivedItem {
+  id: string;
+  received: number;
+}
+
 export default function PurchaseReceive() {
   const router = useRouter()
   const { id } = router.query
   const [purchase, setPurchase] = useState<Purchase | null>(null)
-  const [receivedItems, setReceivedItems] = useState<{ id: string; received: number }[]>([])
+  const [receivedItems, setReceivedItems] = useState<ReceivedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -119,6 +124,18 @@ export default function PurchaseReceive() {
     )
   }
 
+  // Helper function to safely check received quantity
+  const getReceivedQuantity = (item: PurchaseItem) => {
+    const receivedItem = receivedItems.find(ri => ri.id === item.id);
+    return receivedItem?.received || 0;
+  };
+
+  // Helper function to check if received quantity exceeds limit
+  const isQuantityExceeded = (item: PurchaseItem) => {
+    const receivedQuantity = getReceivedQuantity(item);
+    return receivedQuantity > item.quantity;
+  };
+
   if (loading) return <div>Loading...</div>
   if (error) return <div className="text-red-600">{error}</div>
   if (!purchase) return <div>Purchase not found</div>
@@ -165,11 +182,17 @@ export default function PurchaseReceive() {
                         type="number"
                         min="0"
                         max={item.quantity}
-                        value={receivedItems.find(ri => ri.id === item.id)?.received || 0}
-                        onChange={(e) => handleReceivedChange(item.id, parseInt(e.target.value) || 0)}
+                        value={getReceivedQuantity(item)}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          setReceivedItems(prev => {
+                            const others = prev.filter(ri => ri.id !== item.id);
+                            return [...others, { id: item.id, received: value }];
+                          });
+                        }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                       />
-                      {receivedItems.find(ri => ri.id === item.id)?.received > item.quantity && (
+                      {isQuantityExceeded(item) && (
                         <p className="mt-1 text-xs text-red-600">
                           Cannot exceed {item.quantity}
                         </p>
