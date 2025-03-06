@@ -5,6 +5,8 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
+console.log('Initializing NextAuth configuration')
+
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error('Please provide NEXTAUTH_SECRET environment variable')
 }
@@ -24,17 +26,21 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error('Please provide both email and password')
-          }
+        console.log('Attempting authorization...')
+        if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials')
+          return null
+        }
 
+        try {
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           })
+          console.log('User lookup result:', user ? 'Found' : 'Not Found')
 
           if (!user) {
-            throw new Error('No user found with this email')
+            console.log('No user found with email:', credentials.email)
+            return null
           }
 
           if (!user.isApproved) {
@@ -42,11 +48,14 @@ export const authOptions: NextAuthOptions = {
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password)
+          console.log('Password validation:', isValid ? 'Valid' : 'Invalid')
 
           if (!isValid) {
-            throw new Error('Invalid password')
+            console.log('Invalid password')
+            return null
           }
 
+          console.log('Authorization successful')
           return {
             id: user.id,
             email: user.email,
@@ -54,7 +63,7 @@ export const authOptions: NextAuthOptions = {
             role: user.role
           }
         } catch (error) {
-          console.error('Auth error:', error)
+          console.error('Authorization error:', error)
           return null
         }
       }
@@ -62,13 +71,15 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      console.log('JWT Callback:', { tokenExists: !!token, userExists: !!user })
       if (user) {
         token.role = user.role
       }
       return token
     },
     async session({ session, token }) {
-      if (session?.user) {
+      console.log('Session Callback:', { sessionExists: !!session, tokenExists: !!token })
+      if (token && session.user) {
         session.user.role = token.role
       }
       return session
@@ -80,4 +91,6 @@ export const authOptions: NextAuthOptions = {
   }
 }
 
-export default NextAuth(authOptions) 
+const handler = NextAuth(authOptions)
+
+export default handler 
