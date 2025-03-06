@@ -16,7 +16,7 @@ function safeStringify(obj: any) {
 }
 
 export default withAuth(
-  function middleware(req) {
+  function middleware(req: NextRequest) {
     // Debug logging
     console.log('=== Middleware Debug ===');
     console.log('Path:', req.nextUrl.pathname);
@@ -48,49 +48,34 @@ export default withAuth(
       return NextResponse.redirect(new URL("/unauthorized", req.url));
     }
 
+    // If the user is authenticated and trying to access auth pages, redirect to dashboard
+    if (path.startsWith("/auth/")) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        console.log('=== Auth Callback Debug ===');
-        console.log('Token exists:', !!token);
-        console.log('Request path:', req.nextUrl.pathname);
-        console.log('========================');
-        
-        // Only require authentication for protected routes
-        const isProtectedRoute = [
-          '/admin',
-          '/sales',
-          '/customers',
-          '/products',
-          '/purchases',
-          '/dashboard'
-        ].some(prefix => req.nextUrl.pathname.startsWith(prefix));
-
-        if (!isProtectedRoute) {
-          console.log('Public route - allowing access');
-          return true;
-        }
-
-        return !!token;
-      }
+      authorized: ({ token }) => !!token
+    },
+    pages: {
+      signIn: "/auth/login",
     }
   }
 );
 
 export const config = {
   matcher: [
-    // Protected routes that require authentication
-    "/admin/:path*",
-    "/sales/:path*",
-    "/customers/:path*",
-    "/products/:path*",
-    "/purchases/:path*",
-    "/dashboard/:path*",
-    // Add public routes that still go through middleware for debugging
-    "/",
-    "/auth/login",
-    "/auth/signup"
-  ]
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (auth API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - auth/login (login page)
+     * - auth/signup (signup page)
+     */
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|auth/login|auth/signup).*)",
+  ],
 }; 
