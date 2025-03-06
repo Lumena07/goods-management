@@ -35,17 +35,6 @@ if (process.env.NODE_ENV === 'production') {
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  debug: process.env.NODE_ENV !== 'production',
-  secret: process.env.NEXTAUTH_SECRET,
-  session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  pages: {
-    signIn: '/auth/login',
-    error: '/auth/error',
-    signOut: '/auth/login',
-  },
   providers: [
     CredentialsProvider({
       id: 'credentials',
@@ -55,120 +44,59 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log('Attempting authorization for:', credentials?.email)
-        
         if (!credentials?.email || !credentials?.password) {
-          console.log('Missing credentials')
-          return null
+          throw new Error('Email and password required')
         }
 
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email }
-          })
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        })
           
-          if (!user) {
-            console.log('No user found with email:', credentials.email)
-            return null
-          }
+        if (!user) {
+          throw new Error('No user found with this email')
+        }
 
-          if (!user.isApproved) {
-            console.log('User not approved:', credentials.email)
-            throw new Error('Account is pending approval')
-          }
+        if (!user.isApproved) {
+          throw new Error('Account is pending approval')
+        }
 
-          const isValid = await bcrypt.compare(credentials.password, user.password)
-          console.log('Password validation result:', isValid)
+        const isValid = await bcrypt.compare(credentials.password, user.password)
 
-          if (!isValid) {
-            console.log('Invalid password for user:', credentials.email)
-            return null
-          }
+        if (!isValid) {
+          throw new Error('Invalid password')
+        }
 
-          console.log('Authorization successful for:', credentials.email)
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          }
-        } catch (error) {
-          console.error('Authorization error:', error)
-          throw error // Let NextAuth handle the error
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role
         }
       }
     })
   ],
+  pages: {
+    signIn: '/auth/login',
+    error: '/auth/error',
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   callbacks: {
-    async signIn({ user, account }) {
-      try {
-        console.log('SignIn Callback:', { 
-          user: user?.email,
-          provider: account?.provider
-        })
-        
-        // Only allow credentials provider
-        if (account?.provider !== 'credentials') {
-          console.log('Rejected non-credentials provider:', account?.provider)
-          return false
-        }
-        return true
-      } catch (error) {
-        console.error('SignIn Callback Error:', error)
-        return false
-      }
-    },
     async jwt({ token, user }) {
-      try {
-        console.log('JWT Callback:', { 
-          tokenExists: !!token,
-          userEmail: user?.email
-        })
-        if (user) {
-          token.role = user.role
-        }
-        return token
-      } catch (error) {
-        console.error('JWT Callback Error:', error)
-        return token
+      if (user) {
+        token.role = user.role
       }
+      return token
     },
     async session({ session, token }) {
-      try {
-        console.log('Session Callback:', { 
-          sessionExists: !!session,
-          userEmail: session?.user?.email
-        })
-        if (token && session.user) {
-          session.user.role = token.role
-        }
-        return session
-      } catch (error) {
-        console.error('Session Callback Error:', error)
-        return session
+      if (token && session.user) {
+        session.user.role = token.role
       }
-    }
-  },
-  events: {
-    async signIn(message) { 
-      console.log('SignIn Event:', {
-        user: message.user.email,
-        isNewUser: message.isNewUser
-      })
-    },
-    async signOut(message) { 
-      console.log('SignOut Event:', {
-        session: message.session
-      })
-    },
-    async session(message) { 
-      console.log('Session Event:', {
-        session: message.session
-      })
+      return session
     }
   }
 }
 
-const handler = NextAuth(authOptions)
-
-export default handler 
+export default NextAuth(authOptions) 
