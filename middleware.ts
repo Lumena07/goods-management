@@ -2,18 +2,6 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Debug function to safely stringify objects
-function safeStringify(obj: any) {
-  try {
-    return JSON.stringify(obj, (key, value) => {
-      if (key === 'password') return undefined; // Don't log sensitive data
-      return value;
-    }, 2);
-  } catch (error) {
-    return '[Error serializing object]';
-  }
-}
-
 // Define public routes that don't require authentication
 const publicRoutes = ['/auth/login', '/auth/register', '/auth/forgot-password'];
 
@@ -21,12 +9,6 @@ export default withAuth(
   function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname;
     
-    // Debug logging
-    console.log('=== Middleware Debug ===');
-    console.log('Path:', path);
-    console.log('Headers:', safeStringify(Object.fromEntries(req.headers)));
-    console.log('=====================');
-
     // Handle root path redirect to login
     if (path === '/') {
       return NextResponse.redirect(new URL('/auth/login', req.url));

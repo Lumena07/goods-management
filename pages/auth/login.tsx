@@ -13,15 +13,11 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading) return;
-
-    console.log('=== Login Attempt Debug ===')
-    console.log('Form submitted with email:', email)
     
     setError(null);
     setLoading(true);
 
     try {
-      console.log('Calling signIn with credentials...')
       const result = await signIn('credentials', {
         redirect: false,
         email,
@@ -29,14 +25,7 @@ export default function Login() {
         callbackUrl: '/dashboard'
       });
 
-      console.log('SignIn result:', {
-        ok: result?.ok,
-        error: result?.error,
-        url: result?.url
-      })
-
       if (result?.error) {
-        console.log('SignIn error:', result.error)
         const errorMessage = {
           'Email and password required': 'Please enter both email and password.',
           'No user found with this email': 'No account found with this email.',
@@ -46,15 +35,12 @@ export default function Login() {
         
         setError(errorMessage);
       } else if (result?.ok) {
-        console.log('SignIn successful, redirecting to:', result.url || '/dashboard')
         router.push(result.url || '/dashboard');
       }
     } catch (err) {
-      console.error('Login error:', err);
       setError('Unable to connect to the server. Please try again later.');
     } finally {
       setLoading(false);
-      console.log('=== End Login Attempt Debug ===')
     }
   };
 

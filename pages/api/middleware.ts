@@ -11,28 +11,12 @@ export type ApiHandler = (
 export const withErrorHandler = (handler: ApiHandler) => {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
-      // Log request details
-      console.log(`API Request: ${req.method} ${req.url}`)
-      
       // Check authentication
       const session = await getServerSession(req, res, authOptions)
       
-      // Log session status
-      console.log('Session status:', !!session)
-
       // Execute the handler
       await handler(req, res, session)
     } catch (error) {
-      // Log the full error
-      console.error('API Error:', {
-        url: req.url,
-        method: req.method,
-        error: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack
-        } : error
-      })
-
       // Send appropriate error response
       res.status(500).json({
         error: 'Internal Server Error',
