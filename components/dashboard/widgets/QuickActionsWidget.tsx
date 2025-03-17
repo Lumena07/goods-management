@@ -16,13 +16,7 @@ export default function QuickActionsWidget() {
             New Sale
           </Button>
         </Link>
-        <Link href="/customers/new">
-          <Button className="w-full justify-start gap-2" variant="outline">
-            <Users className="h-4 w-4" />
-            New Customer
-          </Button>
-        </Link>
-        <Link href="/purchases/new">
+          <Link href="/purchases/new">
           <Button className="w-full justify-start gap-2" variant="outline">
             <ShoppingCart className="h-4 w-4" />
             New Purchase

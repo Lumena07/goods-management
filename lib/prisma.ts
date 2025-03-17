@@ -20,8 +20,10 @@ if (!process.env.DATABASE_URL) {
   }
 }
 
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+
 // Create Prisma Client instance
-export const prisma = global.prisma || new PrismaClient(prismaClientOptions)
+export const prisma = globalForPrisma.prisma || new PrismaClient(prismaClientOptions)
 
 // Add connection handling
 async function connectWithRetry(retries = 3, delay = 2000) {
@@ -68,7 +70,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Prevent multiple instances in development
 if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma
+  globalForPrisma.prisma = prisma
 }
 
 export default prisma 

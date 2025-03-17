@@ -4,5 +4,11 @@
   "/_document": "pages/_document.js",
   "/auth/login": "pages/auth/login.js",
   "/dashboard": "pages/dashboard.js",
-  "/sales": "pages/sales.js"
+  "/api/dashboard/metrics": "pages/api/dashboard/metrics.js",
+  "/api/products/low-stock": "pages/api/products/low-stock.js",
+  "/sales/new": "pages/sales/new.js",
+  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js",
+  "/api/products": "pages/api/products.js",
+  "/api/customers": "pages/api/customers.js",
+  "/purchases/new": "pages/purchases/new.js"
 }

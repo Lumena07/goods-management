@@ -3,17 +3,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Define public routes that don't require authentication
-const publicRoutes = ['/auth/login', '/auth/register', '/auth/forgot-password'];
+const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/forgot-password'];
 
 export default withAuth(
   function middleware(req: NextRequest) {
-    const path = req.nextUrl.pathname;
-    
-    // Handle root path redirect to login
-    if (path === '/') {
-      return NextResponse.redirect(new URL('/auth/login', req.url));
-    }
-
     return NextResponse.next();
   },
   {
@@ -38,14 +31,8 @@ export default withAuth(
         }
 
         // Sales clerk and admin routes
-        if ((path.startsWith("/sales") || path.startsWith("/customers")) && 
-            !["ADMIN", "SALES_CLERK"].includes(token.role as string)) {
-          return false;
-        }
-
-        // Inventory manager and admin routes
-        if (path.startsWith("/purchases") && 
-            !["ADMIN", "INVENTORY_MANAGER"].includes(token.role as string)) {
+        if ((path.startsWith("/sales") || path.startsWith("/customers") || path.startsWith("/purchases")) && 
+            !["ADMIN", "SALES_CLERK", "INVENTORY_MANAGER"].includes(token.role as string)) {
           return false;
         }
 
