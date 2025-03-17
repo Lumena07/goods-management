@@ -15,15 +15,19 @@ interface PurchaseItem {
   }
 }
 
+interface Supplier {
+  id: string
+  name: string
+}
+
 interface Purchase {
   id: string
-  supplier: {
-    name: string
-  }
   total: number
-  status: 'PENDING' | 'RECEIVED' | 'CANCELLED'
-  items: PurchaseItem[]
+  status: string
+  isPaid: boolean
   createdAt: string
+  supplier: Supplier
+  items: PurchaseItem[]
 }
 
 const PurchaseDetailPage: NextPage = () => {
@@ -58,7 +62,7 @@ const PurchaseDetailPage: NextPage = () => {
     return <div>Loading...</div>
   }
 
-  if (!session || !['ADMIN', 'INVENTORY_MANAGER'].includes(session.user.role)) {
+  if (!session || !['ADMIN', 'SALES_CLERK', 'INVENTORY_MANAGER'].includes(session.user.role)) {
     router.push('/unauthorized')
     return null
   }

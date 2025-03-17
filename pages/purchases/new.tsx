@@ -26,7 +26,7 @@ export default function NewPurchasePage() {
     return <div>Loading...</div>
   }
 
-  if (!session || !['ADMIN'].includes(session.user.role)) {
+  if (!session || !['ADMIN', 'SALES_CLERK', 'INVENTORY_MANAGER'].includes(session.user.role)) {
     router.push('/unauthorized')
     return null
   }

@@ -12,7 +12,7 @@ export default function PurchasesPage() {
     return <div>Loading...</div>
   }
 
-  if (!session || !['ADMIN', 'INVENTORY_MANAGER'].includes(session.user.role)) {
+  if (!session || !['ADMIN', 'SALES_CLERK', 'INVENTORY_MANAGER'].includes(session.user.role)) {
     router.push('/unauthorized')
     return null
   }
