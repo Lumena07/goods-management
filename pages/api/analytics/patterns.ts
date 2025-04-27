@@ -2,6 +2,20 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '../../../lib/prisma'
 import { getSession } from 'next-auth/react'
 
+interface ProductData {
+  product: {
+    id: string
+    name: string
+    currentStock: number
+    minStock: number
+  }
+  sales: Array<{
+    quantity: number
+    date: Date
+  }>
+  totalQuantity: number
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -52,7 +66,7 @@ export default async function handler(
     })
 
     // Calculate patterns and predictions for each product
-    const patterns = Object.values(productSales).map(productData => {
+    const patterns = Object.values(productSales).map((productData: ProductData) => {
       const { product, sales, totalQuantity } = productData
 
       // Calculate monthly averages
