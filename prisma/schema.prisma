@@ -18,6 +18,8 @@ model User {
   tempPassword Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  createdExpenses Expense[] @relation("createdExpenses")
+  approvedExpenses Expense[] @relation("approvedExpenses")
 }
 
 model Customer {
@@ -198,4 +200,35 @@ enum PaymentMethod {
   CASH
   BANK_TRANSFER
   CHECK
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExpenseCategory {
+  SALARY
+  ELECTRICITY
+  RENT
+  TRANSPORT
+  OTHER
+}
+
+model Expense {
+  id          String         @id @default(cuid())
+  amount      Float
+  category    ExpenseCategory
+  description String
+  status      ExpenseStatus  @default(PENDING)
+  createdBy   String
+  approvedBy  String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User          @relation("createdExpenses", fields: [createdBy], references: [id])
+  approver    User?         @relation("approvedExpenses", fields: [approvedBy], references: [id])
+
+  @@index([createdBy])
+  @@index([approvedBy])
 }
