@@ -263,10 +263,8 @@ export default function PurchaseForm({ supplier, onSubmit }: PurchaseFormProps) 
                     <Input
                       type="number"
                       value={item.price}
-                      onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))}
-                      placeholder="Price"
-                      min="0"
-                      className="w-full"
+                      disabled
+                      className="w-full bg-gray-50"
                     />
                   </div>
                   <div className="col-span-2 sm:col-span-1 flex items-end">
