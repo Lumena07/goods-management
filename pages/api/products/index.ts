@@ -13,26 +13,29 @@ export default async function handler(
   }
 
   switch (req.method) {
-    case 'GET':
-      try {
-        const products = await prisma.product.findMany({
-          where: {
-            currentStock: {
-              gt: prisma.product.fields.minStock
-            }
-          },
-          orderBy: {
-            name: 'asc'
-          },
-          include: {
-            customPrices: true
-          }
-        })
-        return res.status(200).json(products)
-      } catch (error) {
-        console.error('Error fetching products:', error)
-        return res.status(500).json({ message: 'Error fetching products' })
+   case 'GET':
+  try {
+    const { filterByStock } = req.query
+    const whereClause = filterByStock === 'true' ? {
+      currentStock: {
+        gt: prisma.product.fields.minStock
       }
+    } : {}
+
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      orderBy: {
+        name: 'asc'
+      },
+      include: {
+        customPrices: true
+      }
+    })
+    return res.status(200).json(products)
+  } catch (error) {
+    console.error('Error fetching products:', error)
+    return res.status(500).json({ message: 'Error fetching products' })
+  }
 
     case 'POST':
       if (session.user.role !== 'ADMIN') {
