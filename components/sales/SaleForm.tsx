@@ -12,6 +12,7 @@ interface Product {
   name: string
   basePrice: number
   currentStock: number
+  minStock: number
   customPrices: Array<{
     customerId: string
     price: number
@@ -99,7 +100,20 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
       }
     }
 
+    // Check if quantity would bring stock below minimum
+    if (field === 'quantity' && newItems[index].productId) {
+      const product = products.find(p => p.id === newItems[index].productId)
+      if (product) {
+        const availableStock = product.currentStock - product.minStock
+        if (value > availableStock) {
+          setError(`Cannot sell more than ${availableStock} units of ${product.name} (current stock: ${product.currentStock}, minimum stock: ${product.minStock})`)
+          return
+        }
+      }
+    }
+
     setItems(newItems)
+    setError('')
   }
 
   const handleRemoveItem = (index: number) => {
