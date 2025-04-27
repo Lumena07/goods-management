@@ -237,9 +237,9 @@ export default function PurchaseForm({ supplier, onSubmit }: PurchaseFormProps) 
                           className="mb-2"
                         />
                       </div>
-                      {products.map(product => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
+                      {supplierPrices.map(supplierPrice => (
+                        <SelectItem key={supplierPrice.productId} value={supplierPrice.productId}>
+                          {supplierPrice.product.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -267,15 +267,15 @@ export default function PurchaseForm({ supplier, onSubmit }: PurchaseFormProps) 
                       className="w-full bg-gray-50"
                     />
                   </div>
-                  <div className="col-span-2 sm:col-span-1 flex items-end">
+                  <div className="col-span-2 sm:col-span-1">
+                    <Label className="block mb-2">&nbsp;</Label>
                     <Button
                       type="button"
                       variant="destructive"
-                      size="icon"
                       onClick={() => handleRemoveItem(index)}
-                      className="w-full sm:w-auto"
+                      className="w-full h-[40px]"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      Delete
                     </Button>
                   </div>
                 </div>
