@@ -16,6 +16,11 @@ export default async function handler(
     case 'GET':
       try {
         const products = await prisma.product.findMany({
+          where: {
+            currentStock: {
+              gt: prisma.product.fields.minStock
+            }
+          },
           orderBy: {
             name: 'asc'
           },
