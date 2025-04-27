@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { calculateVat, formatVatAmount, getVatBreakdown } from '@/lib/utils/vat'
 import { Checkbox } from "@/components/ui/checkbox"
+import { Toast } from "@/components/ui/toast"
 type VatPreference = 'VAT_INCLUSIVE' | 'VAT_EXCLUSIVE'
 interface Product {
   id: string
@@ -46,12 +47,25 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
   const [items, setItems] = useState<SaleItem[]>([])
   const [isAccredited, setIsAccredited] = useState(false)
   const [error, setError] = useState('')
+  const [showError, setShowError] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
+
+  // Filter products based on search
+  const filteredProducts = products.filter(product => 
+    product.name.toLowerCase().includes(productSearch.toLowerCase())
+  )
+
+  // Filter customers based on search
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(customerSearch.toLowerCase())
+  )
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [productsRes, customersRes] = await Promise.all([
-         fetch('/api/products?filterByStock=true'),
+          fetch('/api/products?filterByStock=true'),
           fetch('/api/customers')
         ])
         
@@ -106,7 +120,8 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
       if (product) {
         const availableStock = product.currentStock - product.minStock
         if (value > availableStock) {
-          setError(`Cannot sell more than ${availableStock} units of ${product.name} (current stock: ${product.currentStock}, minimum stock: ${product.minStock})`)
+          setError(`Warning: Cannot sell ${value} units of ${product.name}. Available stock is ${availableStock} units (current stock: ${product.currentStock}, minimum stock: ${product.minStock})`)
+          setShowError(true)
           return
         }
       }
@@ -114,6 +129,7 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
 
     setItems(newItems)
     setError('')
+    setShowError(false)
   }
 
   const handleRemoveItem = (index: number) => {
@@ -165,6 +181,13 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
         vatAmount: saleVatAmount
       })
     }}>
+      {showError && (
+        <Toast
+          message={error}
+          type="warning"
+          onClose={() => setShowError(false)}
+        />
+      )}
       <div className="space-y-4">
         <div>
           <Label htmlFor="customer">Customer</Label>
@@ -172,7 +195,6 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
             value={selectedCustomer?.id || ''}
             onValueChange={(value) => {
               const customer = customers.find(c => c.id === value)
-              console.log('Selected customer:', customer)
               setSelectedCustomer(customer || null)
               
               if (customer) {
@@ -180,11 +202,9 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
                   if (!item.productId) return item
                   
                   const product = products.find(p => p.id === item.productId)
-                  console.log('Checking product for custom price:', product)
                   if (!product) return item
 
                   const customPrice = product.customPrices?.find(cp => cp.customerId === customer.id)
-                  console.log('Custom price found for this customer:', customPrice)
                   if (customPrice) {
                     return {
                       ...item,
@@ -204,7 +224,16 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
               <SelectValue placeholder="Select a customer" />
             </SelectTrigger>
             <SelectContent>
-              {customers.map(customer => (
+              <div className="p-2">
+                <Input
+                  type="text"
+                  placeholder="Search customers..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="mb-2"
+                />
+              </div>
+              {filteredCustomers.map(customer => (
                 <SelectItem key={customer.id} value={customer.id}>
                   {customer.name}
                 </SelectItem>
@@ -247,9 +276,18 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
                     <SelectValue placeholder="Select a product" />
                   </SelectTrigger>
                   <SelectContent>
-                    {products.map(product => (
+                    <div className="p-2">
+                      <Input
+                        type="text"
+                        placeholder="Search products..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="mb-2"
+                      />
+                    </div>
+                    {filteredProducts.map(product => (
                       <SelectItem key={product.id} value={product.id}>
-                        {product.name}
+                        {product.name} (Stock: {product.currentStock})
                       </SelectItem>
                     ))}
                   </SelectContent>
