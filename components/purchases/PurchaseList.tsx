@@ -76,7 +76,8 @@ export default function PurchaseList() {
         </Link>
       </div>
 
-      <div className="bg-white shadow overflow-hidden rounded-lg">
+      {/* Desktop view */}
+      <div className="hidden md:block bg-white shadow overflow-hidden rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -138,20 +139,75 @@ export default function PurchaseList() {
                     View
                   </Link>
                   {session?.user.role === 'ADMIN' && (
-                    <>
-                      <button
-                        onClick={() => handleDelete(purchase.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </>
+                    <button
+                      onClick={() => handleDelete(purchase.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile view */}
+      <div className="md:hidden space-y-4">
+        {purchases.map((purchase) => (
+          <div key={purchase.id} className="bg-white shadow rounded-lg p-4 space-y-3">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <div className="text-sm text-gray-500">
+                  {format(new Date(purchase.createdAt), 'MMM d, yyyy')}
+                </div>
+                <div className="font-medium">
+                  {purchase.supplier?.name || 'N/A'}
+                </div>
+              </div>
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                purchase.status === 'RECEIVED' 
+                  ? 'bg-green-100 text-green-800'
+                  : purchase.status === 'PENDING'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {purchase.status}
+              </span>
+            </div>
+
+            <div className="text-sm text-gray-600 space-y-1">
+              {purchase.items?.map(item => (
+                <div key={item.id} className="flex justify-between">
+                  <span>{item.product.name}</span>
+                  <span>Qty: {item.quantity}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-sm font-medium">
+              Total: TZS {purchase.total?.toLocaleString()}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2 border-t">
+              <Link
+                href={`/purchases/${purchase.id}`}
+                className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+              >
+                View
+              </Link>
+              {session?.user.role === 'ADMIN' && (
+                <button
+                  onClick={() => handleDelete(purchase.id)}
+                  className="text-red-600 hover:text-red-900 text-sm font-medium"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
