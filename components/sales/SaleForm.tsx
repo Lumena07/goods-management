@@ -51,7 +51,7 @@ export default function SaleForm({ onSubmit }: SaleFormProps) {
     const fetchData = async () => {
       try {
         const [productsRes, customersRes] = await Promise.all([
-          fetch('/api/products'),
+         fetch('/api/products?filterByStock=true'),
           fetch('/api/customers')
         ])
         
