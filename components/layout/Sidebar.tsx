@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  BarChart2,
+  Receipt,
 } from "lucide-react"
 import { cn } from '@/lib/utils'
 
@@ -33,7 +35,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       <div className="flex h-16 items-center border-b border-blue-700 px-3 justify-between relative">
         <span className={cn(
           "text-lg font-semibold text-white transition-opacity duration-200 ml-3",
-          isCollapsed ? "opacity-0 hidden" : "opacity-100"
+          isCollapsed ? "opacity-0 hidden" : "opacity-100 hidden md:block"
         )}>
           Navigation
         </span>
@@ -105,6 +107,24 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               isCollapsed ? "hidden" : "block"
             )}>
               Purchases
+            </span>
+          </Button>
+        </Link>
+
+        <Link href="/expenses" className="block">
+          <Button 
+            variant="ghost" 
+            className={cn(
+              "w-full justify-start text-white hover:text-white hover:bg-blue-700",
+              isCollapsed && "justify-center px-0"
+            )}
+          >
+            <Receipt className={cn("h-5 w-5", isCollapsed ? "mr-0" : "mr-3")} />
+            <span className={cn(
+              "transition-opacity duration-200",
+              isCollapsed ? "hidden" : "block"
+            )}>
+              Expenses
             </span>
           </Button>
         </Link>
@@ -181,6 +201,23 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   isCollapsed ? "hidden" : "block"
                 )}>
                   Suppliers
+                </span>
+              </Button>
+            </Link>
+            <Link href="/analytics" className="block">
+              <Button 
+                variant="ghost" 
+                className={cn(
+                  "w-full justify-start text-white hover:text-white hover:bg-blue-700",
+                  isCollapsed && "justify-center px-0"
+                )}
+              >
+                <BarChart2 className={cn("h-5 w-5", isCollapsed ? "mr-0" : "mr-3")} />
+                <span className={cn(
+                  "transition-opacity duration-200",
+                  isCollapsed ? "hidden" : "block"
+                )}>
+                  Analytics
                 </span>
               </Button>
             </Link>
