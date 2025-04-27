@@ -204,40 +204,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 </span>
               </Button>
             </Link>
-            <Link href="/analytics" className="block">
-              <Button 
-                variant="ghost" 
-                className={cn(
-                  "w-full justify-start text-white hover:text-white hover:bg-blue-700",
-                  isCollapsed && "justify-center px-0"
-                )}
-              >
-                <BarChart2 className={cn("h-5 w-5", isCollapsed ? "mr-0" : "mr-3")} />
-                <span className={cn(
-                  "transition-opacity duration-200",
-                  isCollapsed ? "hidden" : "block"
-                )}>
-                  Analytics
-                </span>
-              </Button>
-            </Link>
-            <Link href="/admin/users" className="block">
-              <Button 
-                variant="ghost" 
-                className={cn(
-                  "w-full justify-start text-white hover:text-white hover:bg-blue-700",
-                  isCollapsed && "justify-center px-0"
-                )}
-              >
-                <Users className={cn("h-5 w-5", isCollapsed ? "mr-0" : "mr-3")} />
-                <span className={cn(
-                  "transition-opacity duration-200",
-                  isCollapsed ? "hidden" : "block"
-                )}>
-                  User Management
-                </span>
-              </Button>
-            </Link>
+           
           </>
         )}
       </nav>
